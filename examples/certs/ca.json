@@ -1,0 +1,15 @@
+{
+  "CN": "tada.se",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "SE",
+      "L": "Täby",
+      "O": "Tada AB",
+      "ST": "Stockholms Län"
+    }
+  ]
+}

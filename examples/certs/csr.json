@@ -1,0 +1,21 @@
+{
+  "hosts": [
+    "127.0.0.1",
+    "localhost",
+    "tada",
+    "home.tada.se"
+  ],
+  "CN": "mqtt-nats.tada.se",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "SE",
+      "L": "Täby",
+      "O": "Tada AB",
+      "ST": "Stockholms Län"
+    }
+  ]
+}
