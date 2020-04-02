@@ -15,7 +15,7 @@ func TestParsePublish(t *testing.T) {
 	w := &mqtt.Writer{}
 	p1.Write(w)
 
-	r := &mqtt.Reader{bytes.NewReader(w.Bytes())}
+	r := mqtt.NewReader(bytes.NewReader(w.Bytes()))
 	b, _ := r.ReadByte()
 	pl, _ := r.ReadVarInt()
 	p2, err := ParsePublish(r, b, pl)

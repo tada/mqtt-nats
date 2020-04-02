@@ -17,7 +17,7 @@ func TestParseConnect(t *testing.T) {
 	w := &mqtt.Writer{}
 	c1.Write(w)
 
-	r := &mqtt.Reader{bytes.NewReader(w.Bytes())}
+	r := mqtt.NewReader(bytes.NewReader(w.Bytes()))
 	b, _ := r.ReadByte()
 	pl, _ := r.ReadVarInt()
 	c2, err := ParseConnect(r, b, pl)
