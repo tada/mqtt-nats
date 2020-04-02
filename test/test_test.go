@@ -10,6 +10,8 @@ import (
 	"github.com/tada/mqtt-nats/logger"
 )
 
+var mqttServer bridge.Bridge
+
 func TestMain(m *testing.M) {
 	natsServer := NATSServerOnPort(natsPort)
 
@@ -23,7 +25,8 @@ func TestMain(m *testing.M) {
 		RepeatRate:           50,
 		RetainedRequestTopic: retainedRequestTopic,
 		StoragePath:          "mqtt-nats.json"}
-	mqttServer, err := RunBridgeOnPorts(lg, &opts)
+	var err error
+	mqttServer, err = RunBridgeOnPorts(lg, &opts)
 
 	var code int
 	if err == nil {
@@ -33,7 +36,10 @@ func TestMain(m *testing.M) {
 		code = 1
 	}
 	natsServer.Shutdown()
-	shutdown(mqttServer)
+	if err = mqttServer.Shutdown(); err != nil {
+		lg.Error(err)
+		code = 1
+	}
 	os.Exit(code)
 }
 

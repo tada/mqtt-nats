@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -43,10 +44,11 @@ type Server interface {
 
 type Bridge interface {
 	Server
-	InitiateShutdown()
 	Done() <-chan bool
+	Restart(ready chan<- bool) error
 	Serve(ready chan<- bool) error
 	ServeClient(conn net.Conn)
+	Shutdown() error
 }
 
 type server struct {
@@ -78,7 +80,6 @@ func New(opts *Options, logger logger.Logger) (Bridge, error) {
 		},
 		pubAckTimeout: time.Duration(opts.RepeatRate) * time.Millisecond,
 		sm:            &sm{m: make(map[string]Session, 37)},
-		done:          make(chan bool, 1),
 		signals:       make(chan os.Signal, 1),
 	}
 
@@ -90,10 +91,25 @@ func New(opts *Options, logger logger.Logger) (Bridge, error) {
 	return s, err
 }
 
-// InitiateShutdown tells the server to shut down. This is essentially the same as sending a SIGINT to
-// the server process.
-func (s *server) InitiateShutdown() {
+func (s *server) Restart(ready chan<- bool) error {
+	err := s.Shutdown()
+	if err == nil && s.opts.StoragePath != "" {
+		err = s.load(s.opts.StoragePath)
+	}
+	if err == nil {
+		err = s.Serve(ready)
+	}
+	return err
+}
+
+func (s *server) Shutdown() error {
 	s.signals <- syscall.SIGINT
+	select {
+	case <-s.Done():
+	case <-time.After(5 * time.Millisecond):
+		return errors.New("timeout during bridge shutdown")
+	}
+	return nil
 }
 
 // Done will be closed when the shutdown is complete
@@ -102,6 +118,8 @@ func (s *server) Done() <-chan bool {
 }
 
 func (s *server) Serve(ready chan<- bool) error {
+	s.done = make(chan bool, 1)
+
 	listener, err := getTCPListener(s.opts)
 	if err != nil {
 		ready <- false
@@ -443,6 +461,7 @@ func (s *server) drainAndShutdown() error {
 
 	if s.natsConn != nil {
 		s.natsConn.Close()
+		s.natsConn = nil
 	}
 
 	var err error
@@ -468,6 +487,7 @@ func (s *server) load(path string) error {
 		dc := json.NewDecoder(bufio.NewReader(f))
 		dc.UseNumber()
 		jsonstream.AssertConsumer(dc, s)
+		s.Debug("State loaded from", path)
 		return nil
 	})
 }

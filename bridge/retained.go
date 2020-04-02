@@ -55,6 +55,8 @@ func (r *retained) MarshalToJSON(w io.Writer) {
 
 func (r *retained) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 	jsonstream.AssertDelimToken(t, '{')
+	r.msgs = make(map[string]*pkg.Publish)
+	r.order = nil
 	for {
 		s, ok := jsonstream.AssertStringOrEnd(js, '}')
 		if !ok {

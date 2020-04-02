@@ -3,7 +3,6 @@ package test
 
 import (
 	"errors"
-	"time"
 
 	"github.com/nats-io/nats-server/v2/server"
 	testserver "github.com/nats-io/nats-server/v2/test"
@@ -33,15 +32,6 @@ func RunBridgeOnPorts(lg logger.Logger, opts *bridge.Options) (bridge.Bridge, er
 		return nil, errors.New("mqtt-nats failed to start")
 	}
 	return server, nil
-}
-
-func shutdown(server bridge.Bridge) {
-	server.InitiateShutdown()
-	select {
-	case <-server.Done():
-	case <-time.After(100 * time.Millisecond):
-		server.(logger.Logger).Error("timeout during bridge shutdown")
-	}
 }
 
 // NATSServerOnPort will run a server on the given port.

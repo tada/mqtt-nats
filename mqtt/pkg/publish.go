@@ -196,7 +196,7 @@ func (p *Publish) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 	for {
 		s, ok := jsonstream.AssertStringOrEnd(js, '}')
 		if !ok {
-			return
+			break
 		}
 		switch s {
 		case "flags":

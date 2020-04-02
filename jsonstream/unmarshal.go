@@ -138,6 +138,7 @@ func AssertConsumer(js *json.Decoder, c Consumer) {
 	t, err := js.Token()
 	if err == nil {
 		c.UnmarshalFromJSON(js, t)
+		return
 	}
 	if err == io.EOF {
 		err = io.ErrUnexpectedEOF

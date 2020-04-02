@@ -104,6 +104,7 @@ func (s *session) MarshalToJSON(w io.Writer) {
 		}
 		pio.WriteByte('}', w)
 	}
+	pio.WriteByte('}', w)
 	s.awaitsAckLock.RUnlock()
 }
 
@@ -112,7 +113,7 @@ func (s *session) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 	for {
 		k, ok := jsonstream.AssertStringOrEnd(js, '}')
 		if !ok {
-			return
+			break
 		}
 		switch k {
 		case "id":
@@ -124,7 +125,7 @@ func (s *session) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 			for {
 				k, ok = jsonstream.AssertStringOrEnd(js, '}')
 				if !ok {
-					return
+					break
 				}
 				if s.prelAwaitsAck == nil {
 					s.prelAwaitsAck = make(map[uint16]string)
@@ -140,7 +141,7 @@ func (s *session) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 			for {
 				k, ok = jsonstream.AssertStringOrEnd(js, '}')
 				if !ok {
-					return
+					break
 				}
 				if s.awaitsClientAck == nil {
 					s.awaitsClientAck = make(map[uint16]*pkg.Publish)
@@ -319,7 +320,7 @@ func (m *sm) MarshalJSON() ([]byte, error) {
 
 func (m *sm) MarshalToJSON(w io.Writer) {
 	m.lock.RLock()
-	defer m.lock.RLock()
+	defer m.lock.RUnlock()
 
 	pio.WriteString(`{"seed":`, w)
 	pio.WriteInt(int64(m.seed), w)
@@ -333,7 +334,7 @@ func (m *sm) MarshalToJSON(w io.Writer) {
 			pio.WriteByte(':', w)
 			v.MarshalToJSON(w)
 		}
-		pio.WriteString(`}`, w)
+		pio.WriteByte('}', w)
 	}
 	pio.WriteByte('}', w)
 }
@@ -343,21 +344,21 @@ func (m *sm) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 	for {
 		k, ok := jsonstream.AssertStringOrEnd(js, '}')
 		if !ok {
-			return
+			break
 		}
 		switch k {
-		case `sessions`:
+		case "sessions":
 			jsonstream.AssertDelim(js, '{')
 			for {
 				k, ok = jsonstream.AssertStringOrEnd(js, '}')
 				if !ok {
-					return
+					break
 				}
 				s := &session{}
 				jsonstream.AssertConsumer(js, s)
 				m.m[k] = s
 			}
-		case `seed`:
+		case "seed":
 			m.seed = uint32(jsonstream.AssertInt(js))
 		}
 	}

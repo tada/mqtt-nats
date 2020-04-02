@@ -24,14 +24,14 @@ type natsPub struct {
 }
 
 func (n *natsPub) MarshalToJSON(w io.Writer) {
-	pio.WriteString(`{"pkg":`, w)
+	pio.WriteString(`{"m":`, w)
 	n.pp.MarshalToJSON(w)
 	if n.user != nil {
-		pio.WriteString(`,"user":`, w)
+		pio.WriteString(`,"u":`, w)
 		jsonstream.WriteString(*n.user, w)
 	}
 	if n.password != nil {
-		pio.WriteString(`,"pw":`, w)
+		pio.WriteString(`,"p":`, w)
 		jsonstream.WriteString(base64.StdEncoding.EncodeToString(n.password), w)
 	}
 	pio.WriteByte('}', w)
@@ -45,13 +45,13 @@ func (n *natsPub) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 			break
 		}
 		switch k {
-		case "pkg":
+		case "m":
 			n.pp = &pkg.Publish{}
 			jsonstream.AssertConsumer(js, n.pp)
-		case "user":
+		case "u":
 			u := jsonstream.AssertString(js)
 			n.user = &u
-		case "pw":
+		case "p":
 			p, err := base64.StdEncoding.DecodeString(jsonstream.AssertString(js))
 			if err != nil {
 				panic(pio.Error{Cause: err})
