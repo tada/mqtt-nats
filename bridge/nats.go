@@ -134,6 +134,9 @@ func (c *client) natsResponse(desiredQoS byte, m *nats.Msg) {
 		if mt := ParseReplyTopic(m.Reply); mt != nil {
 			id = mt.PackageID()
 			flags = mt.Flags()
+		} else {
+			id = c.server.NextFreePackageID()
+			flags = 2 // QoS level 1
 		}
 	}
 	pp := pkg.NewPublish(id, mqtt.FromNATS(m.Subject), flags, m.Data, false, m.Reply)

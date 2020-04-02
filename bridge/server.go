@@ -122,7 +122,9 @@ func (s *server) Serve(ready chan<- bool) error {
 
 	listener, err := getTCPListener(s.opts)
 	if err != nil {
-		ready <- false
+		if ready != nil {
+			ready <- false
+		}
 		return err
 	}
 
@@ -141,14 +143,16 @@ func (s *server) Serve(ready chan<- bool) error {
 		s.Debug("trapped signal", sig)
 		switch sig {
 		case syscall.SIGINT, syscall.SIGTERM:
-			s.Debug(`mqttbridge is shutting down`)
+			s.Debug("mqtt-nats is shutting down")
 			shuttingDown = true
 			_ = listener.Close()
 		}
 		// TODO: Add signal to reload config.
 	}()
 
-	ready <- true
+	if ready != nil {
+		ready <- true
+	}
 	for {
 		mqttConn, err := listener.Accept()
 		if err != nil {
@@ -162,6 +166,39 @@ func (s *server) Serve(ready chan<- bool) error {
 		}
 	}
 	return s.drainAndShutdown()
+}
+
+func (s *server) drainAndShutdown() error {
+	s.Debug("waiting for clients to drain")
+	s.clientLock.Lock()
+	clients := s.clients
+	s.clients = nil
+	s.clientLock.Unlock()
+
+	for i := range clients {
+		clients[i].SetDisconnected(nil)
+	}
+	s.clientWG.Wait()
+	s.Debug("client drain complete")
+
+	s.trackAckLock.Lock()
+	if s.pubAckTimer != nil {
+		s.pubAckTimer.Stop()
+		s.pubAckTimer = nil
+	}
+	s.trackAckLock.Unlock()
+
+	if s.natsConn != nil {
+		s.natsConn.Close()
+		s.natsConn = nil
+	}
+
+	var err error
+	if s.opts.StoragePath != "" {
+		err = s.persist(s.opts.StoragePath)
+	}
+	close(s.done)
+	return err
 }
 
 func (s *server) startRetainedRequestHandler() error {
@@ -439,37 +476,6 @@ func (s *server) unmanageClient(c Client) {
 		}
 	}
 	s.clientLock.Unlock()
-}
-
-func (s *server) drainAndShutdown() error {
-	s.clientLock.Lock()
-	clients := s.clients
-	s.clients = nil
-	s.clientLock.Unlock()
-
-	for i := range clients {
-		clients[i].SetDisconnected(nil)
-	}
-	s.clientWG.Wait()
-
-	s.trackAckLock.Lock()
-	if s.pubAckTimer != nil {
-		s.pubAckTimer.Stop()
-		s.pubAckTimer = nil
-	}
-	s.trackAckLock.Unlock()
-
-	if s.natsConn != nil {
-		s.natsConn.Close()
-		s.natsConn = nil
-	}
-
-	var err error
-	if s.opts.StoragePath != "" {
-		err = s.persist(s.opts.StoragePath)
-	}
-	close(s.done)
-	return err
 }
 
 func (s *server) load(path string) error {

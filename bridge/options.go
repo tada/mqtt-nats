@@ -10,15 +10,8 @@ type Options struct {
 	// Path to file where the bridge is persisted. Can be empty if no persistence is desired
 	StoragePath string
 
-	// Port is the MQTT port
-	Port int
-
 	// NATSUrls is a comma separated list of URLs used when connecting to NATS
 	NATSUrls string
-
-	// RepeatRate is the delay in milliseconds between publishing packages that originated in this server
-	// that have QoS > 0 but hasn't been acknowledged.
-	RepeatRate int
 
 	// RetainedRequestTopic is a NATS topic that a NATS client can publish to after doing a subscribe
 	// in order to retrieve any messages that are retained for that subscription. The payload must be
@@ -27,15 +20,25 @@ type Options struct {
 	// base64 encoded string
 	RetainedRequestTopic string
 
+	// Port is the MQTT port
+	Port int
+
+	// RepeatRate is the delay in milliseconds between publishing packages that originated in this server
+	// that have QoS > 0 but hasn't been acknowledged.
+	RepeatRate int
+
+	// NATSOpts are options specific to the NATS connection
+	NATSOpts []nats.Option
+
 	TLSTimeout float64
-	TLS        bool
-	TLSVerify  bool
-	TLSMap     bool
 	TLSCert    string
 	TLSKey     string
 	TLSCaCert  string
 	TLSConfig  *tls.Config
+	TLS        bool
+	TLSVerify  bool
+	TLSMap     bool
 
-	// NATSOpts are options specific to the NATS connection
-	NATSOpts []nats.Option
+	// Debug enables debug level log output
+	Debug bool
 }

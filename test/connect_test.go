@@ -242,7 +242,7 @@ func TestConnect_will_qos_1_restart(t *testing.T) {
 		pkg.NewConnect("testclient-"+nuid.Next(), true, 5, &pkg.Will{
 			Topic:   willTopic,
 			Message: willPayload,
-			QoS:     1}, "", nil))
+			QoS:     1}, "bob", []byte("password")))
 	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
 	// forcefully close connection
 	_ = conn.Close()

@@ -29,6 +29,9 @@ func Bridge(args []string, stdout, stderr io.Writer) int {
 	// persistence
 	fs.StringVar(&opts.StoragePath, "storage", "mqtt-nats.json", "path to json file where server state is persisted")
 
+	fs.BoolVar(&opts.Debug, "D", false, "Enable Debug logging")
+	fs.BoolVar(&opts.Debug, "debug", false, "Enable Debug logging")
+
 	// tls
 	fs.BoolVar(&opts.TLS, "tls", false, "Enable TLS. If true, the -tlscert and -tlskey options are mandatory")
 	fs.StringVar(&opts.TLSCert, "tlscert", "", "Server certificate file")
@@ -83,7 +86,7 @@ func Bridge(args []string, stdout, stderr io.Writer) int {
 	lg := logger.New(logger.Debug, stdout, stderr)
 	s, err := bridge.New(opts, lg)
 	if err == nil {
-		err = s.Serve(make(chan bool))
+		err = s.Serve(nil)
 	}
 
 	if err != nil {

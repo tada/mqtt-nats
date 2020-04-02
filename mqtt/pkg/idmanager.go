@@ -35,6 +35,11 @@ func NewIDManager() IDManager {
 
 func (s *idManager) NextFreePackageID() uint16 {
 	s.pkgIDLock.Lock()
+	s.nextFreePkgID++
+	if s.nextFreePkgID == 0 {
+		// counter flipped over and zero is not a valid ID
+		s.nextFreePkgID++
+	}
 	for s.inFlight[s.nextFreePkgID] {
 		s.nextFreePkgID++
 		if s.nextFreePkgID == 0 {
