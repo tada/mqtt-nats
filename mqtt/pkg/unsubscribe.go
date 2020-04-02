@@ -9,7 +9,7 @@ import (
 	"github.com/tada/mqtt-nats/mqtt"
 )
 
-// Unsubscribe is the MQTT unsubscribe package
+// Unsubscribe is the MQTT UNSUBSCRIBE package
 type Unsubscribe struct {
 	id     uint16
 	topics []string
@@ -46,6 +46,7 @@ func ParseUnsubscribe(r *mqtt.Reader, b byte, pkLen int) (*Unsubscribe, error) {
 	return up, nil
 }
 
+// Write writes the MQTT bits of this package on the given Writer
 func (u *Unsubscribe) Write(w *mqtt.Writer) {
 	pkLen := 2 // package id
 	tps := u.topics
@@ -60,6 +61,7 @@ func (u *Unsubscribe) Write(w *mqtt.Writer) {
 	}
 }
 
+// Equals returns true if this package is equal to the given package, false if not
 func (u *Unsubscribe) Equals(p Package) bool {
 	if os, ok := p.(*Unsubscribe); ok && u.id == os.id && len(u.topics) == len(os.topics) {
 		for i := range u.topics {
@@ -77,6 +79,7 @@ func (u *Unsubscribe) ID() uint16 {
 	return u.id
 }
 
+// String returns a brief string representation of the package. Suitable for logging
 func (u *Unsubscribe) String() string {
 	bs := bytes.NewBufferString("UNSUBSCRIBE (m")
 	bs.WriteString(strconv.Itoa(int(u.ID())))
@@ -98,11 +101,12 @@ func (u *Unsubscribe) Topics() []string {
 	return u.topics
 }
 
-// Type returns the TpUnsubscribe package type
+// Type returns the MQTT Package type
 func (u *Unsubscribe) Type() byte {
 	return TpUnsubscribe
 }
 
+// UnsubAck is the MQTT UNSUBACK package
 type UnsubAck uint16
 
 // ParseUnsubAck parses the unsubscribe package from the given reader.
@@ -114,18 +118,22 @@ func ParseUnsubAck(r *mqtt.Reader, b byte, pkLen int) (UnsubAck, error) {
 	return UnsubAck(id), err
 }
 
+// Equals returns true if this package is equal to the given package, false if not
 func (u UnsubAck) Equals(other Package) bool {
 	return u == other
 }
 
+// String returns a brief string representation of the package. Suitable for logging
 func (u UnsubAck) String() string {
 	return fmt.Sprintf("UNSUBACK (m%d)", int(u))
 }
 
+// Type returns the MQTT Package type
 func (u UnsubAck) Type() byte {
 	return TpUnsubAck
 }
 
+// Write writes the MQTT bits of this package on the given Writer
 func (u UnsubAck) Write(w *mqtt.Writer) {
 	w.WriteU8(TpUnsubAck)
 	w.WriteU8(2)

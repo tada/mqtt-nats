@@ -9,10 +9,16 @@ import (
 	"github.com/tada/mqtt-nats/pio"
 )
 
+// An IDManager manages package IDs and ensures their uniqueness by maintaining a list of
+// IDs that are in use
 type IDManager interface {
 	jsonstream.Consumer
 	jsonstream.Streamer
+
+	// NextFreePackageID allocates and returns the next free package ID
 	NextFreePackageID() uint16
+
+	// ReleasePackageID releases a previously allocated package ID
 	ReleasePackageID(uint16)
 }
 
@@ -22,6 +28,7 @@ type idManager struct {
 	nextFreePkgID uint16
 }
 
+// NewIDManager creates a new IDManager
 func NewIDManager() IDManager {
 	return &idManager{nextFreePkgID: 1, inFlight: make(map[uint16]bool, 37)}
 }

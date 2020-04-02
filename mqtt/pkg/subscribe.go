@@ -23,7 +23,7 @@ type Subscribe struct {
 	topics []Topic
 }
 
-const FixedSubscribeFlags = 2
+const fixedSubscribeFlags = 2
 
 // NewSubscribe creates a new MQTT subscribe package
 func NewSubscribe(id uint16, topics ...Topic) *Subscribe {
@@ -32,7 +32,7 @@ func NewSubscribe(id uint16, topics ...Topic) *Subscribe {
 
 // ParseSubscribe parses the subscribe package from the given reader.
 func ParseSubscribe(r *mqtt.Reader, b byte, pkLen int) (*Subscribe, error) {
-	if (b & 0xf) != FixedSubscribeFlags {
+	if (b & 0xf) != fixedSubscribeFlags {
 		return nil, errors.New("malformed subscribe header")
 	}
 
@@ -67,6 +67,7 @@ func (s *Subscribe) ID() uint16 {
 	return s.id
 }
 
+// Equals returns true if this package is equal to the given package, false if not
 func (s *Subscribe) Equals(p Package) bool {
 	if os, ok := p.(*Subscribe); ok && s.id == os.id && len(s.topics) == len(os.topics) {
 		for i := range s.topics {
@@ -79,6 +80,7 @@ func (s *Subscribe) Equals(p Package) bool {
 	return false
 }
 
+// String returns a brief string representation of the package. Suitable for logging
 func (s *Subscribe) String() string {
 	bs := bytes.NewBufferString("SUBSCRIBE (m")
 	bs.WriteString(strconv.Itoa(int(s.ID())))
@@ -113,17 +115,18 @@ func (s *Subscribe) Topics() []Topic {
 	return s.topics
 }
 
-// Type returns the TpSubscribe package type
+// Type returns the MQTT Package type
 func (s *Subscribe) Type() byte {
 	return TpSubscribe
 }
 
+// Write writes the MQTT bits of this package on the given Writer
 func (s *Subscribe) Write(w *mqtt.Writer) {
 	pkLen := 2 // id
 	for i := range s.topics {
 		pkLen += 3 + len(s.topics[i].Name)
 	}
-	w.WriteU8(TpSubscribe | FixedSubscribeFlags)
+	w.WriteU8(TpSubscribe | fixedSubscribeFlags)
 	w.WriteVarInt(pkLen)
 	w.WriteU16(s.id)
 	for i := range s.topics {
@@ -133,15 +136,18 @@ func (s *Subscribe) Write(w *mqtt.Writer) {
 	}
 }
 
+// SubAck is the MQTT SUBACK package sent in response to a SUBSCRIBE
 type SubAck struct {
 	id           uint16
 	topicReturns []byte
 }
 
+// NewSubAck creates an SUBACK package
 func NewSubAck(id uint16, topicReturns ...byte) *SubAck {
 	return &SubAck{id: id, topicReturns: topicReturns}
 }
 
+// ParseSubAck parses a SUBACK package
 func ParseSubAck(r *mqtt.Reader, b byte, pkLen int) (*SubAck, error) {
 	var err error
 	if r, err = r.ReadPackage(pkLen); err != nil {
@@ -157,15 +163,18 @@ func ParseSubAck(r *mqtt.Reader, b byte, pkLen int) (*SubAck, error) {
 	return s, nil
 }
 
+// Equals returns true if this package is equal to the given package, false if not
 func (s *SubAck) Equals(p Package) bool {
 	os, ok := p.(*SubAck)
 	return ok && s.id == os.id && bytes.Equal(s.topicReturns, os.topicReturns)
 }
 
+// ID returns the package ID
 func (s *SubAck) ID() uint16 {
 	return s.id
 }
 
+// String returns a brief string representation of the package. Suitable for logging
 func (s *SubAck) String() string {
 	bs := bytes.NewBufferString("SUBACK (m")
 	bs.WriteString(strconv.Itoa(int(s.id)))
@@ -188,14 +197,17 @@ func (s *SubAck) String() string {
 	return bs.String()
 }
 
+// TopicReturns returns the desired QoS value for each subscribed topic
 func (s *SubAck) TopicReturns() []byte {
 	return s.topicReturns
 }
 
+// Type returns the MQTT Package type
 func (s *SubAck) Type() byte {
 	return TpSubAck
 }
 
+// Write writes the MQTT bits of this package on the given Writer
 func (s *SubAck) Write(w *mqtt.Writer) {
 	w.WriteU8(TpSubAck)
 	w.WriteVarInt(2 + len(s.topicReturns))

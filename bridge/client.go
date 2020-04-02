@@ -339,7 +339,7 @@ func (c *client) handleConnect(cp *pkg.Connect) (time.Duration, error) {
 	var maxWait time.Duration
 	if cp.KeepAlive() > 0 {
 		// Max wait between control packages is 1.5 times the keep alive value
-		maxWait = (time.Duration(cp.KeepAlive()) * time.Second * 3) / 2
+		maxWait = (cp.KeepAlive() * 3) / 2
 	}
 	c.setState(StateConnected)
 	c.queueForWrite(pkg.NewAckConnect(c.sessionPresent, 0))

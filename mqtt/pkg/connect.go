@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/tada/mqtt-nats/mqtt"
 )
@@ -11,14 +12,15 @@ import (
 const (
 	protoName = "MQTT"
 
-	cleanSessionFlag = byte(0b00000010)
-	willFlag         = byte(0b00000100)
-	willQoS          = byte(0b00011000)
-	willRetainFlag   = byte(0b00100000)
-	passwordFlag     = byte(0b01000000)
-	userNameFlag     = byte(0b10000000)
+	cleanSessionFlag = byte(0x02)
+	willFlag         = byte(0x04)
+	willQoS          = byte(0x18)
+	willRetainFlag   = byte(0x20)
+	passwordFlag     = byte(0x40)
+	userNameFlag     = byte(0x80)
 )
 
+// ReturnCode used in response to a CONNECT
 type ReturnCode byte
 
 func (r ReturnCode) Error() string {
@@ -60,17 +62,7 @@ const (
 	RtNotAuthorized
 )
 
-type Connect struct {
-	clientID    string
-	willTopic   string
-	userName    string
-	willMessage []byte
-	password    []byte
-	keepAlive   uint16
-	clientLevel byte
-	flags       byte
-}
-
+// Will is the optional client will in the MQTT connect package
 type Will struct {
 	Topic   string
 	Message []byte
@@ -78,22 +70,33 @@ type Will struct {
 	Retain  bool
 }
 
+// Equals returns true if this will is equal to the given will, false if not
+func (w *Will) Equals(ow *Will) bool {
+	return w.Retain == ow.Retain && w.QoS == ow.QoS && w.Topic == ow.Topic && bytes.Equal(w.Message, ow.Message)
+}
+
+// Connect is the MQTT connect package
+type Connect struct {
+	clientID    string
+	userName    string
+	password    []byte
+	will        *Will
+	keepAlive   uint16
+	clientLevel byte
+	flags       byte
+}
+
+// NewConnect creates a new MQTT connect package
 func NewConnect(clientID string, cleanSession bool, keepAlive uint16, will *Will, userName string, password []byte) *Connect {
 	flags := byte(0)
 	if cleanSession {
 		flags |= cleanSessionFlag
 	}
-	var (
-		willTopic   string
-		willMessage []byte
-	)
 	if will != nil {
 		flags |= willFlag | (will.QoS << 3)
 		if will.Retain {
 			flags |= willRetainFlag
 		}
-		willTopic = will.Topic
-		willMessage = will.Message
 	}
 	if len(password) > 0 {
 		flags |= passwordFlag
@@ -109,9 +112,7 @@ func NewConnect(clientID string, cleanSession bool, keepAlive uint16, will *Will
 		keepAlive:   keepAlive,
 		clientLevel: 0x4,
 		flags:       flags,
-		willTopic:   willTopic,
-		willMessage: willMessage,
-	}
+		will:        will}
 }
 
 // ParseConnect parses the connect package from the given reader.
@@ -159,10 +160,11 @@ func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (*Connect, error) {
 
 	// Will
 	if c.HasWill() {
-		if c.willTopic, err = r.ReadString(); err != nil {
+		c.will = &Will{QoS: (c.flags & willQoS) >> 3, Retain: (c.flags & willRetainFlag) != 0}
+		if c.will.Topic, err = r.ReadString(); err != nil {
 			return nil, err
 		}
-		if c.willMessage, err = r.ReadBytes(); err != nil {
+		if c.will.Message, err = r.ReadBytes(); err != nil {
 			return nil, err
 		}
 	}
@@ -183,6 +185,7 @@ func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (*Connect, error) {
 	return c, nil
 }
 
+// Equals returns true if this package is equal to the given package, false if not
 func (c *Connect) Equals(p Package) bool {
 	oc, ok := p.(*Connect)
 	return ok &&
@@ -190,9 +193,8 @@ func (c *Connect) Equals(p Package) bool {
 		c.clientLevel == oc.clientLevel &&
 		c.flags == oc.flags &&
 		c.clientID == oc.clientID &&
-		c.willTopic == oc.willTopic &&
+		(c.will == oc.will || (c.will != nil && c.will.Equals(oc.will))) &&
 		c.userName == oc.userName &&
-		bytes.Equal(c.willMessage, oc.willMessage) &&
 		bytes.Equal(c.password, oc.password)
 }
 
@@ -201,6 +203,7 @@ func (c *Connect) SetClientLevel(cl byte) {
 	c.clientLevel = cl
 }
 
+// Write writes the MQTT bits of this package on the given Writer
 func (c *Connect) Write(w *mqtt.Writer) {
 	pkLen := 2 + len(protoName) +
 		1 + // clientLevel
@@ -209,8 +212,8 @@ func (c *Connect) Write(w *mqtt.Writer) {
 		2 + len(c.clientID)
 
 	if c.HasWill() {
-		pkLen += 2 + len(c.willTopic)
-		pkLen += 2 + len(c.willMessage)
+		pkLen += 2 + len(c.will.Topic)
+		pkLen += 2 + len(c.will.Message)
 	}
 	if c.HasUserName() {
 		pkLen += 2 + len(c.userName)
@@ -227,8 +230,8 @@ func (c *Connect) Write(w *mqtt.Writer) {
 	w.WriteU16(c.keepAlive)
 	w.WriteString(c.clientID)
 	if c.HasWill() {
-		w.WriteString(c.willTopic)
-		w.WriteBytes(c.willMessage)
+		w.WriteString(c.will.Topic)
+		w.WriteBytes(c.will.Message)
 	}
 	if c.HasUserName() {
 		w.WriteString(c.userName)
@@ -238,68 +241,74 @@ func (c *Connect) Write(w *mqtt.Writer) {
 	}
 }
 
+// CleanSession returns true if the connection is requesting a clean session
 func (c *Connect) CleanSession() bool {
 	return (c.flags & cleanSessionFlag) != 0
 }
 
+// ClientID returns the id provided by the client
 func (c *Connect) ClientID() string {
 	return c.clientID
 }
 
+// HasPassword returns true if the connection contains a password
 func (c *Connect) HasPassword() bool {
 	return (c.flags & passwordFlag) != 0
 }
 
+// HasUserName returns true if the connection contains a user name
 func (c *Connect) HasUserName() bool {
 	return (c.flags & userNameFlag) != 0
 }
 
+// HasWill returns true if the connection contains a will
 func (c *Connect) HasWill() bool {
 	return (c.flags & willFlag) != 0
 }
 
-func (c *Connect) KeepAlive() uint16 {
-	return c.keepAlive
+// KeepAlive returns the desired keep alive duration
+func (c *Connect) KeepAlive() time.Duration {
+	return time.Duration(c.keepAlive) * time.Second
 }
 
+// Password returns the contained password or nil
 func (c *Connect) Password() []byte {
 	return c.password
 }
 
+// String returns a brief string representation of the package. Suitable for logging
 func (c *Connect) String() string {
 	return "CONNECT"
 }
 
+// Type returns the MQTT Package type
 func (c *Connect) Type() byte {
 	return TpConnect
 }
 
+// Username returns the user name or an empty string
 func (c *Connect) Username() string {
 	return c.userName
 }
 
+// Will returns the client will or nil
 func (c *Connect) Will() *Will {
-	if c.HasWill() {
-		return &Will{
-			Message: c.willMessage,
-			Topic:   c.willTopic,
-			QoS:     (c.flags & willQoS) >> 3,
-			Retain:  (c.flags & willRetainFlag) != 0}
-	}
-	return nil
+	return c.will
 }
 
+// DeleteWill clears will and all flags that are associated with the will
 func (c *Connect) DeleteWill() {
-	c.flags &^= (willFlag | willQoS | willRetainFlag)
-	c.willTopic = ``
-	c.willMessage = nil
+	c.flags &^= willFlag | willQoS | willRetainFlag
+	c.will = nil
 }
 
+// AckConnect is the MQTT CONNACK package sent in response to a CONNECT
 type AckConnect struct {
 	flags      byte
 	returnCode byte
 }
 
+// NewAckConnect creates an CONNACK package
 func NewAckConnect(sessionPresent bool, returnCode ReturnCode) Package {
 	flags := byte(0x00)
 	if sessionPresent {
@@ -308,6 +317,7 @@ func NewAckConnect(sessionPresent bool, returnCode ReturnCode) Package {
 	return &AckConnect{flags: flags, returnCode: byte(returnCode)}
 }
 
+// ParseAckConnect parses a CONNACK package
 func ParseAckConnect(r *mqtt.Reader, _ byte, pkLen int) (*AckConnect, error) {
 	var err error
 	if pkLen != 2 {
@@ -321,19 +331,23 @@ func ParseAckConnect(r *mqtt.Reader, _ byte, pkLen int) (*AckConnect, error) {
 	return &AckConnect{flags: bs[0], returnCode: bs[1]}, nil
 }
 
+// Equals returns true if this package is equal to the given package, false if not
 func (a *AckConnect) Equals(p Package) bool {
 	ac, ok := p.(*AckConnect)
 	return ok && *a == *ac
 }
 
+// String returns a brief string representation of the package. Suitable for logging
 func (a *AckConnect) String() string {
 	return fmt.Sprintf("CONNACK (s%d, rt%d)", a.flags, a.returnCode)
 }
 
+// Type returns the MQTT Package type
 func (a *AckConnect) Type() byte {
 	return TpPingResp
 }
 
+// Write writes the MQTT bits of this package on the given Writer
 func (a *AckConnect) Write(w *mqtt.Writer) {
 	w.WriteU8(TpConnAck)
 	w.WriteU8(2)
@@ -341,22 +355,28 @@ func (a *AckConnect) Write(w *mqtt.Writer) {
 	w.WriteU8(a.returnCode)
 }
 
+// The Disconnect type represents the MQTT DISCONNECT package
 type Disconnect int
 
+// DisconnectSingleton is the one and only instance of the Disconnect type
 const DisconnectSingleton = Disconnect(0)
 
+// Equals returns true if this package is equal to the given package, false if not
 func (Disconnect) Equals(p Package) bool {
 	return p == DisconnectSingleton
 }
 
+// Type returns the MQTT Package type
 func (Disconnect) Type() byte {
 	return TpDisconnect
 }
 
+// String returns a brief string representation of the package. Suitable for logging
 func (Disconnect) String() string {
 	return "DISCONNECT"
 }
 
+// Write writes the MQTT bits of this package on the given Writer
 func (Disconnect) Write(w *mqtt.Writer) {
 	w.WriteU8(TpDisconnect)
 	w.WriteU8(0)
