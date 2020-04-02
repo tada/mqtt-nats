@@ -1,11 +1,14 @@
 package test
 
 import (
+	"errors"
 	"os"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/nats-io/nats-server/v2/server"
+	testserver "github.com/nats-io/nats-server/v2/test"
 	"github.com/tada/mqtt-nats/bridge"
 	"github.com/tada/mqtt-nats/logger"
 )
@@ -41,6 +44,42 @@ func TestMain(m *testing.M) {
 		code = 1
 	}
 	os.Exit(code)
+}
+
+const mqttPort = 11883
+const natsPort = 14222
+const retainedRequestTopic = "mqtt.retained.request"
+
+func RunBridgeOnPorts(lg logger.Logger, opts *bridge.Options) (bridge.Bridge, error) {
+	srv, err := bridge.New(opts, lg)
+	if err != nil {
+		return nil, err
+	}
+
+	serverReady := make(chan bool, 1)
+	go func() {
+		err = srv.Serve(serverReady)
+		if err != nil {
+			lg.Error(err)
+		}
+	}()
+
+	if !<-serverReady {
+		return nil, errors.New("mqtt-nats failed to start")
+	}
+	return srv, nil
+}
+
+// NATSServerOnPort will run a server on the given port.
+func NATSServerOnPort(port int) *server.Server {
+	opts := testserver.DefaultTestOptions
+	opts.Port = port
+	return NATSServerWithOptions(opts)
+}
+
+// NATSServerWithOptions will run a server with the given options.
+func NATSServerWithOptions(opts server.Options) *server.Server {
+	return testserver.RunServer(&opts)
 }
 
 func assertMessageReceived(t *testing.T, c <-chan bool) {

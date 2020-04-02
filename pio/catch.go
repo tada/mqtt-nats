@@ -5,9 +5,12 @@ package pio
 func Catch(doer func() error) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			if c, ok := r.(*Error); ok {
-				err = c.Cause
-			} else {
+			switch r := r.(type) {
+			case *Error:
+				err = r.Cause
+			case Error:
+				err = r.Cause
+			default:
 				panic(r)
 			}
 		}

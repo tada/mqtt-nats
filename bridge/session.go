@@ -1,7 +1,6 @@
 package bridge
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 	"strconv"
@@ -9,7 +8,6 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/tada/mqtt-nats/jsonstream"
-	"github.com/tada/mqtt-nats/mqtt"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
 	"github.com/tada/mqtt-nats/pio"
 )
@@ -61,7 +59,6 @@ type Session interface {
 type session struct {
 	id              string
 	clientID        string
-	topicPrefix     string
 	prelAwaitsAck   map[uint16]string
 	awaitsAck       map[uint16]*nats.Subscription // awaits ack on reply-to to be propagated to client
 	awaitsClientAck map[uint16]*pkg.Publish       // awaits ack from client to be propagated to nats
@@ -264,18 +261,6 @@ func (s *session) Destroy() {
 	s.awaitsAckLock.Unlock()
 }
 
-func (s *session) TopicPrefix() string {
-	if s.topicPrefix == `` {
-		w := bytes.NewBufferString(nats.InboxPrefix)
-		w.WriteString(mqtt.ToNATS(s.clientID))
-		w.WriteByte('.')
-		w.WriteString(s.id)
-		w.WriteByte('.')
-		s.topicPrefix = w.String()
-	}
-	return s.topicPrefix
-}
-
 type SessionManager interface {
 	jsonstream.Consumer
 	jsonstream.Streamer
@@ -312,10 +297,6 @@ func (m *sm) Create(clientID string) Session {
 	m.m[clientID] = s
 	m.lock.Unlock()
 	return s
-}
-
-func (m *sm) MarshalJSON() ([]byte, error) {
-	return jsonstream.Marshal(m)
 }
 
 func (m *sm) MarshalToJSON(w io.Writer) {

@@ -125,7 +125,7 @@ func (p *Publish) MarshalToJSON(w io.Writer) {
 	pio.WriteInt(int64(p.id), w)
 	pio.WriteString(`,"name":`, w)
 	jsonstream.WriteString(p.name, w)
-	if p.replyTo != `` {
+	if p.replyTo != "" {
 		pio.WriteString(`,"reply_to":`, w)
 		jsonstream.WriteString(p.replyTo, w)
 	}

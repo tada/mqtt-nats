@@ -45,31 +45,34 @@ func (r *Reader) ReadVarInt() (int, error) {
 }
 
 func (r *Reader) ReadUint16() (uint16, error) {
+	var v uint16
 	bs, err := r.ReadExact(2)
-	if err != nil {
-		return 0, err
+	if err == nil {
+		v = binary.BigEndian.Uint16(bs)
 	}
-	return binary.BigEndian.Uint16(bs), nil
+	return v, err
 }
 
 // ReadString will reads a big endian uint16 from the stream that denotes the number of bytes
 // that will follow. It then reads those bytes and returns them as a UTF8 encoded string.
 func (r *Reader) ReadString() (string, error) {
+	var s string
 	bs, err := r.ReadBytes()
-	if err != nil {
-		return ``, err
+	if err == nil {
+		s = string(bs)
 	}
-	return string(bs), nil
+	return s, err
 }
 
 // ReadBytes will reads a big endian uint16 from the stream that denotes the number of bytes
 // that will follow. It then reads those bytes and returns them.
 func (r *Reader) ReadBytes() ([]byte, error) {
+	var bs []byte
 	l, err := r.ReadUint16()
-	if l == 0 || err != nil {
-		return []byte{}, err
+	if l > 0 && err == nil {
+		bs, err = r.ReadExact(int(l))
 	}
-	return r.ReadExact(int(l))
+	return bs, err
 }
 
 func (r *Reader) ReadExact(n int) ([]byte, error) {
@@ -99,9 +102,10 @@ func (r *Reader) ReadRemainingBytes() ([]byte, error) {
 
 func (r *Reader) ReadPackage(pkLen int) (*Reader, error) {
 	// Do a bulk read and switch to read from that bulk
+	var rdr *Reader
 	pk, err := r.ReadExact(pkLen)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		rdr = &Reader{bytes.NewReader(pk)}
 	}
-	return &Reader{bytes.NewReader(pk)}, nil
+	return rdr, err
 }
