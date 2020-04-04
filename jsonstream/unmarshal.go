@@ -14,6 +14,14 @@ type Consumer interface {
 	UnmarshalFromJSON(js *json.Decoder, firstToken json.Token)
 }
 
+// unexpectedError converts io.EOF to io.ErrUnexpectedEOF. The argument is returned for all other values
+func unexpectedError(err error) error {
+	if err == io.EOF {
+		err = io.ErrUnexpectedEOF
+	}
+	return err
+}
+
 func Unmarshal(c Consumer, bs []byte) error {
 	return pio.Catch(func() error {
 		js := json.NewDecoder(bytes.NewReader(bs))
@@ -31,10 +39,7 @@ func AssertDelim(js *json.Decoder, delim byte) {
 		AssertDelimToken(t, delim)
 		return
 	}
-	if err == io.EOF {
-		err = io.ErrUnexpectedEOF
-	}
-	panic(err)
+	panic(unexpectedError(err))
 }
 
 // AssertDelimToken asserts that the given token is equal to the given delimiter. A panic
@@ -58,10 +63,8 @@ func AssertString(js *json.Decoder) string {
 			return s
 		}
 		err = &pio.Error{Cause: fmt.Errorf("expected a string, got %v", t)}
-	} else if err == io.EOF {
-		err = io.ErrUnexpectedEOF
 	}
-	panic(err)
+	panic(unexpectedError(err))
 }
 
 // AssertInt reads next token from the decoder and asserts that it is an integer. The function returns the integer
@@ -78,10 +81,8 @@ func AssertInt(js *json.Decoder) int64 {
 			}
 		}
 		err = &pio.Error{Cause: fmt.Errorf("expected an integer, got %v", t)}
-	} else if err == io.EOF {
-		err = io.ErrUnexpectedEOF
 	}
-	panic(err)
+	panic(unexpectedError(err))
 }
 
 // AssertStringOrEnd reads next token from the decoder and asserts that it is either a string or a delimiter that
@@ -100,10 +101,8 @@ func AssertStringOrEnd(js *json.Decoder, end byte) (string, bool) {
 			}
 		}
 		err = &pio.Error{Cause: fmt.Errorf("expected a string or the delimiter '%c' got %v", end, t)}
-	} else if err == io.EOF {
-		err = io.ErrUnexpectedEOF
 	}
-	panic(err)
+	panic(unexpectedError(err))
 }
 
 // AssertIntOrEnd reads next token from the decoder and asserts that it is either an integer or a delimiter that
@@ -127,10 +126,8 @@ func AssertIntOrEnd(js *json.Decoder, end byte) (int64, bool) {
 			}
 		}
 		err = &pio.Error{Cause: fmt.Errorf("expected an integer or the delimiter '%c' got %v", end, t)}
-	} else if err == io.EOF {
-		err = io.ErrUnexpectedEOF
 	}
-	panic(err)
+	panic(unexpectedError(err))
 }
 
 // AssertConsumer reads next token from the decoder and passes that token to the given consumers UnmarshalFromJSON.
@@ -140,10 +137,7 @@ func AssertConsumer(js *json.Decoder, c Consumer) {
 		c.UnmarshalFromJSON(js, t)
 		return
 	}
-	if err == io.EOF {
-		err = io.ErrUnexpectedEOF
-	}
-	panic(err)
+	panic(unexpectedError(err))
 }
 
 // AssertConsumerOrEnd reads next token from the decoder and asserts that it is either an consumer or a delimiter that
@@ -161,8 +155,5 @@ func AssertConsumerOrEnd(js *json.Decoder, c Consumer, end byte) bool {
 		c.UnmarshalFromJSON(js, t)
 		return true
 	}
-	if err == io.EOF {
-		err = io.ErrUnexpectedEOF
-	}
-	panic(err)
+	panic(unexpectedError(err))
 }

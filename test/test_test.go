@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 
 	// NOTE: Setting level to logger.Debug here is very helpful when authoring and debugging tests but
 	//  it also makes the tests very verbose.
-	lg := logger.New(logger.Silent, os.Stdout, os.Stderr)
+	lg := logger.New(logger.Debug, os.Stdout, os.Stderr)
 
 	opts := bridge.Options{
 		Port:                 mqttPort,
@@ -70,6 +70,19 @@ func RunBridgeOnPorts(lg logger.Logger, opts *bridge.Options) (bridge.Bridge, er
 	return srv, nil
 }
 
+func RestartBridge(t *testing.T, b bridge.Bridge) {
+	ready := make(chan bool, 1)
+	go func() {
+		if err := mqttServer.Restart(ready); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	if !<-ready {
+		t.Fatal("mqtt-nats failed to start")
+	}
+}
+
 // NATSServerOnPort will run a server on the given port.
 func NATSServerOnPort(port int) *server.Server {
 	opts := testserver.DefaultTestOptions
@@ -86,7 +99,7 @@ func assertMessageReceived(t *testing.T, c <-chan bool) {
 	t.Helper()
 	select {
 	case <-c:
-	case <-time.After(10 * time.Millisecond):
+	case <-time.After(time.Second):
 		t.Fatalf(`expected package did not arrive`)
 	}
 }

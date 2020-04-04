@@ -2,7 +2,6 @@ package pkg
 
 import (
 	"bytes"
-	"encoding/json"
 	"testing"
 
 	"github.com/tada/mqtt-nats/jsonstream"
@@ -11,7 +10,7 @@ import (
 )
 
 func TestParsePublish(t *testing.T) {
-	p1 := NewPublish(23, "some/topic", 2, []byte("the message"), false, "")
+	p1 := NewPublish(23, "some/topic", 2, []byte(`the "message"`), false, "")
 	w := &mqtt.Writer{}
 	p1.Write(w)
 
@@ -28,14 +27,34 @@ func TestParsePublish(t *testing.T) {
 }
 
 func TestPublish_MarshalToJSON(t *testing.T) {
-	p1 := NewPublish(23, "some/topic", 2, []byte("the message"), false, "")
-	w := &bytes.Buffer{}
-	p1.MarshalToJSON(w)
+	p1 := NewPublish(23, "some/topic", 2, []byte(`the "message"`), false, "")
+	bs, err := jsonstream.Marshal(p1)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	js := json.NewDecoder(bytes.NewReader(w.Bytes()))
-	js.UseNumber()
 	p2 := &Publish{}
-	jsonstream.AssertConsumer(js, p2)
+	err = jsonstream.Unmarshal(p2, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p1.Equals(p2) {
+		t.Fatal(p1, "!=", p2)
+	}
+}
+
+func TestPublish_MarshalToJSON_nonUTF(t *testing.T) {
+	p1 := NewPublish(23, "some/topic", 2, []byte{0, 1, 2, 3, 5}, false, "")
+	bs, err := jsonstream.Marshal(p1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p2 := &Publish{}
+	err = jsonstream.Unmarshal(p2, bs)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !p1.Equals(p2) {
 		t.Fatal(p1, "!=", p2)
 	}

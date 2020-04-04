@@ -78,7 +78,7 @@ func (s *idManager) MarshalToJSON(w io.Writer) {
 	pio.WriteString(`{"next":`, w)
 	pio.WriteInt(int64(nf), w)
 	if len(inf) > 0 {
-		pio.WriteString(`,"in_flight":[`, w)
+		pio.WriteString(`,"inFlight":[`, w)
 		for i := range inf {
 			if i > 0 {
 				pio.WriteByte(',', w)
@@ -100,7 +100,7 @@ func (s *idManager) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 		switch k {
 		case "next":
 			s.nextFreePkgID = uint16(jsonstream.AssertInt(js))
-		case "in_flight":
+		case "inFlight":
 			jsonstream.AssertDelim(js, '[')
 			for {
 				i, ok := jsonstream.AssertIntOrEnd(js, ']')

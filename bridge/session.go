@@ -72,11 +72,11 @@ func (s *session) MarshalJSON() ([]byte, error) {
 func (s *session) MarshalToJSON(w io.Writer) {
 	pio.WriteString(`{"id":`, w)
 	jsonstream.WriteString(s.id, w)
-	pio.WriteString(`,"client_id":`, w)
+	pio.WriteString(`,"cid":`, w)
 	jsonstream.WriteString(s.clientID, w)
 	s.awaitsAckLock.RLock()
 	if len(s.awaitsAck) > 0 {
-		pio.WriteString(`,"awaits_ack":`, w)
+		pio.WriteString(`,"awAck":`, w)
 		sep := byte('{')
 		for k, v := range s.awaitsAck {
 			pio.WriteByte(sep, w)
@@ -89,7 +89,7 @@ func (s *session) MarshalToJSON(w io.Writer) {
 		pio.WriteByte('}', w)
 	}
 	if len(s.awaitsClientAck) > 0 {
-		pio.WriteString(`,"awaits_client_ack":`, w)
+		pio.WriteString(`,"awClientAck":`, w)
 		sep := byte('{')
 		for k, v := range s.awaitsClientAck {
 			pio.WriteByte(sep, w)
@@ -115,9 +115,9 @@ func (s *session) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 		switch k {
 		case "id":
 			s.id = jsonstream.AssertString(js)
-		case "client_id":
+		case "cid":
 			s.clientID = jsonstream.AssertString(js)
-		case "awaits_ack":
+		case "awAck":
 			jsonstream.AssertDelim(js, '{')
 			for {
 				k, ok = jsonstream.AssertStringOrEnd(js, '}')
@@ -133,7 +133,7 @@ func (s *session) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 				}
 				s.prelAwaitsAck[uint16(i)] = jsonstream.AssertString(js)
 			}
-		case "awaits_client_ack":
+		case "awClientAck":
 			jsonstream.AssertDelim(js, '{')
 			for {
 				k, ok = jsonstream.AssertStringOrEnd(js, '}')

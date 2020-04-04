@@ -50,6 +50,49 @@ func TestPublishSubscribe_qos_1(t *testing.T) {
 	assertMessageReceived(t, gotIt)
 }
 
+func TestPublishSubscribe_qos_1_restart(t *testing.T) {
+	topic := "testing/some/topic"
+	mid := nextPackageID()
+	pp := pkg.NewPublish2(mid, topic, []byte("payload"), 1, false, false)
+
+	c1ID := nextClientID()
+	c1 := mqttConnect(t, mqttPort)
+	gotIt := make(chan bool, 1)
+	go func() {
+		mqttSend(t, c1, pkg.NewConnect(c1ID, false, 1, nil, nil))
+		mqttExpect(t, c1, pkg.NewAckConnect(false, 0))
+
+		sid := nextPackageID()
+		mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 1}))
+		mqttExpect(t, c1, pkg.NewSubAck(sid, 1), pp)
+		gotIt <- true
+	}()
+
+	c2ID := nextClientID()
+	c2 := mqttConnect(t, mqttPort)
+	mqttSend(t, c2, pkg.NewConnect(c2ID, false, 1, nil, nil))
+	mqttExpect(t, c2, pkg.NewAckConnect(false, 0))
+	mqttSend(t, c2, pp)
+
+	assertMessageReceived(t, gotIt)
+
+	RestartBridge(t, mqttServer)
+
+	c1 = mqttConnect(t, mqttPort)
+	mqttSend(t, c1, pkg.NewConnect(c1ID, false, 1, nil, nil))
+	mqttExpect(t, c1, pkg.NewAckConnect(true, 0))
+
+	c2 = mqttConnect(t, mqttPort)
+	mqttSend(t, c2, pkg.NewConnect(c2ID, false, 1, nil, nil))
+	mqttExpect(t, c2, pkg.NewAckConnect(true, 0))
+
+	mqttSend(t, c1, pkg.PubAck(mid))
+	mqttDisconnect(t, c1)
+
+	mqttExpect(t, c2, pkg.PubAck(mid))
+	mqttDisconnect(t, c2)
+}
+
 func TestMqttPublishNatsSubscribe(t *testing.T) {
 	pl := []byte("payload")
 	pp := pkg.SimplePublish("testing/some/topic", pl)

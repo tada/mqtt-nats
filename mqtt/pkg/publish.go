@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"unicode/utf8"
 
 	"github.com/tada/mqtt-nats/jsonstream"
 	"github.com/tada/mqtt-nats/mqtt"
@@ -122,6 +121,18 @@ func (p *Publish) SetDup() {
 	p.flags |= PublishDup
 }
 
+// IsPrintableASCII returns true if the given bytes are constrained to the ASCII 7-bit character set and
+// has no control characters.
+func IsPrintableASCII(bs []byte) bool {
+	for i := range bs {
+		c := bs[i]
+		if c < 32 || c > 127 {
+			return false
+		}
+	}
+	return true
+}
+
 // MarshalToJSON marshals the package as a JSON object onto the given writer
 func (p *Publish) MarshalToJSON(w io.Writer) {
 	pio.WriteString(`{"flags":`, w)
@@ -131,16 +142,15 @@ func (p *Publish) MarshalToJSON(w io.Writer) {
 	pio.WriteString(`,"name":`, w)
 	jsonstream.WriteString(p.name, w)
 	if p.replyTo != "" {
-		pio.WriteString(`,"reply_to":`, w)
+		pio.WriteString(`,"replyTo":`, w)
 		jsonstream.WriteString(p.replyTo, w)
 	}
 	if len(p.payload) > 0 {
-		pls := string(p.payload)
-		if utf8.ValidString(pls) {
+		if IsPrintableASCII(p.payload) {
 			pio.WriteString(`,"payload":`, w)
-			jsonstream.WriteString(pls, w)
+			jsonstream.WriteString(string(p.payload), w)
 		} else {
-			pio.WriteString(`,"payload_enc":`, w)
+			pio.WriteString(`,"payloadEnc":`, w)
 			jsonstream.WriteString(base64.StdEncoding.EncodeToString(p.payload), w)
 		}
 	}
@@ -218,7 +228,7 @@ func (p *Publish) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 			p.replyTo = jsonstream.AssertString(js)
 		case "payload":
 			p.payload = []byte(jsonstream.AssertString(js))
-		case "payload_enc":
+		case "payloadEnc":
 			var err error
 			p.payload, err = base64.StdEncoding.DecodeString(jsonstream.AssertString(js))
 			if err != nil {

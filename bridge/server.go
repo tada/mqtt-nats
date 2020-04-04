@@ -20,7 +20,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"unicode/utf8"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nuid"
@@ -229,12 +228,11 @@ func (s *server) handleRetainedRequest(m *nats.Msg) {
 			}
 			pio.WriteString(`{"subject":`, buf)
 			jsonstream.WriteString(mqtt.ToNATS(pp.TopicName()), buf)
-			pls := string(pp.Payload())
-			if utf8.ValidString(pls) {
+			if pkg.IsPrintableASCII(pp.Payload()) {
 				pio.WriteString(`,"payload":`, buf)
-				jsonstream.WriteString(pls, buf)
+				jsonstream.WriteString(string(pp.Payload()), buf)
 			} else {
-				pio.WriteString(`,"payload_enc":`, buf)
+				pio.WriteString(`,"payloadEnc":`, buf)
 				jsonstream.WriteString(base64.StdEncoding.EncodeToString(pp.Payload()), buf)
 			}
 			pio.WriteByte('}', buf)
@@ -404,9 +402,9 @@ func (s *server) MarshalToJSON(w io.Writer) {
 	jsonstream.WriteString(time.Now().Format(time.RFC3339), w)
 	pio.WriteString(`,"id":`, w)
 	jsonstream.WriteString(s.session.ClientID(), w)
-	pio.WriteString(`,"id_manager":`, w)
+	pio.WriteString(`,"idm":`, w)
 	s.IDManager.MarshalToJSON(w)
-	pio.WriteString(`,"session_manager":`, w)
+	pio.WriteString(`,"sm":`, w)
 	s.sm.MarshalToJSON(w)
 	if !s.retainedPackages.Empty() {
 		pio.WriteString(`,"retained":`, w)
@@ -440,9 +438,9 @@ func (s *server) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 		switch k {
 		case "id":
 			id = jsonstream.AssertString(js)
-		case "id_manager":
+		case "idm":
 			jsonstream.AssertConsumer(js, s.IDManager)
-		case "session_manager":
+		case "sm":
 			jsonstream.AssertConsumer(js, s.sm)
 		case "retained":
 			jsonstream.AssertConsumer(js, s.retainedPackages)

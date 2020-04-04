@@ -12,6 +12,10 @@ import (
 	"github.com/tada/mqtt-nats/mqtt/pkg"
 )
 
+func nextClientID() string {
+	return "testclient-" + nuid.Next()
+}
+
 // mqttConnect establishes a tcp connection to the given port on the default host
 func mqttConnect(t *testing.T, port int) net.Conn {
 	t.Helper()
@@ -22,11 +26,11 @@ func mqttConnect(t *testing.T, port int) net.Conn {
 	return conn
 }
 
-// mqttConnect establishes a tcp connection to the given port on the default host, sends the
+// mqttConnectClean establishes a tcp connection to the given port on the default host, sends the
 // initial connect package for a clean session and awaits the CONNACK.
 func mqttConnectClean(t *testing.T, port int) net.Conn {
 	conn := mqttConnect(t, port)
-	mqttSend(t, conn, pkg.NewConnect("testclient-"+nuid.Next(), true, 1, nil, nil))
+	mqttSend(t, conn, pkg.NewConnect(nextClientID(), true, 1, nil, nil))
 	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
 	return conn
 }

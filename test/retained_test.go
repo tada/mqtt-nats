@@ -23,7 +23,7 @@ func decodeRetained(t *testing.T, data []byte) []*pkg.Publish {
 		var pl []byte
 		if ps, ok := m["payload"]; ok {
 			pl = []byte(ps)
-		} else if pe, ok := m["payload_enc"]; ok {
+		} else if pe, ok := m["payloadEnc"]; ok {
 			if pl, err = base64.StdEncoding.DecodeString(pe); err != nil {
 				t.Fatal(err)
 			}
