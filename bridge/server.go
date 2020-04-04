@@ -44,8 +44,8 @@ type Server interface {
 type Bridge interface {
 	Server
 	Done() <-chan bool
-	Restart(ready chan<- bool) error
-	Serve(ready chan<- bool) error
+	Restart(ready *sync.WaitGroup) error
+	Serve(ready *sync.WaitGroup) error
 	ServeClient(conn net.Conn)
 	Shutdown() error
 }
@@ -90,13 +90,15 @@ func New(opts *Options, logger logger.Logger) (Bridge, error) {
 	return s, err
 }
 
-func (s *server) Restart(ready chan<- bool) error {
+func (s *server) Restart(ready *sync.WaitGroup) error {
 	err := s.Shutdown()
 	if err == nil && s.opts.StoragePath != "" {
 		err = s.load(s.opts.StoragePath)
 	}
 	if err == nil {
 		err = s.Serve(ready)
+	} else {
+		ready.Done()
 	}
 	return err
 }
@@ -105,7 +107,7 @@ func (s *server) Shutdown() error {
 	s.signals <- syscall.SIGINT
 	select {
 	case <-s.Done():
-	case <-time.After(5 * time.Millisecond):
+	case <-time.After(time.Second):
 		return errors.New("timeout during bridge shutdown")
 	}
 	return nil
@@ -116,22 +118,30 @@ func (s *server) Done() <-chan bool {
 	return s.done
 }
 
-func (s *server) Serve(ready chan<- bool) error {
-	s.done = make(chan bool, 1)
+func (s *server) bootUp(ready *sync.WaitGroup) (net.Listener, error) {
+	if ready != nil {
+		defer ready.Done()
+	}
 
 	listener, err := getTCPListener(s.opts)
 	if err != nil {
-		if ready != nil {
-			ready <- false
-		}
-		return err
+		return nil, err
 	}
 
 	if s.opts.RetainedRequestTopic != "" {
-		err = s.startRetainedRequestHandler()
-		if err != nil {
-			return err
+		if err = s.startRetainedRequestHandler(); err != nil {
+			return nil, err
 		}
+	}
+
+	s.done = make(chan bool, 1)
+	return listener, nil
+}
+
+func (s *server) Serve(ready *sync.WaitGroup) error {
+	listener, err := s.bootUp(ready)
+	if err != nil {
+		return err
 	}
 
 	signal.Notify(s.signals, syscall.SIGINT, syscall.SIGTERM)
@@ -149,9 +159,6 @@ func (s *server) Serve(ready chan<- bool) error {
 		// TODO: Add signal to reload config.
 	}()
 
-	if ready != nil {
-		ready <- true
-	}
 	for {
 		mqttConn, err := listener.Accept()
 		if err != nil {

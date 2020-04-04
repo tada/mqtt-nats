@@ -1,9 +1,9 @@
 package test
 
 import (
-	"errors"
 	"os"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -59,31 +59,27 @@ func RunBridgeOnPorts(lg logger.Logger, opts *bridge.Options) (bridge.Bridge, er
 		return nil, err
 	}
 
-	serverReady := make(chan bool, 1)
+	serverReady := sync.WaitGroup{}
+	serverReady.Add(1)
 	go func() {
-		err = srv.Serve(serverReady)
+		err = srv.Serve(&serverReady)
 		if err != nil {
 			lg.Error(err)
 		}
 	}()
-
-	if !<-serverReady {
-		return nil, errors.New("mqtt-nats failed to start")
-	}
+	serverReady.Wait()
 	return srv, nil
 }
 
 func RestartBridge(t *testing.T, b bridge.Bridge) {
-	ready := make(chan bool, 1)
+	serverReady := sync.WaitGroup{}
+	serverReady.Add(1)
 	go func() {
-		if err := mqttServer.Restart(ready); err != nil {
-			t.Fatal(err)
+		if err := b.Restart(&serverReady); err != nil {
+			t.Error(err)
 		}
 	}()
-
-	if !<-ready {
-		t.Fatal("mqtt-nats failed to start")
-	}
+	serverReady.Wait()
 }
 
 // NATSServerOnPort will run a server on the given port.
