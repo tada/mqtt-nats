@@ -13,7 +13,7 @@ func TestParseConnect(t *testing.T) {
 		Message: []byte("the will"),
 		QoS:     1,
 		Retain:  false,
-	}, "bob", []byte("password"))
+	}, &Credentials{User: "bob", Password: []byte("password")})
 	w := &mqtt.Writer{}
 	c1.Write(w)
 

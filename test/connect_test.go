@@ -10,14 +10,14 @@ import (
 
 func TestConnect(t *testing.T) {
 	conn := mqttConnect(t, mqttPort)
-	mqttSend(t, conn, pkg.NewConnect("testclient-"+nuid.Next(), true, 1, nil, "", nil))
+	mqttSend(t, conn, pkg.NewConnect("testclient-"+nuid.Next(), true, 1, nil, nil))
 	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
 	mqttDisconnect(t, conn)
 }
 
 func TestConnect_sessionPresent(t *testing.T) {
 	conn := mqttConnect(t, mqttPort)
-	c := pkg.NewConnect("testclient-"+nuid.Next(), false, 1, nil, "", nil)
+	c := pkg.NewConnect("testclient-"+nuid.Next(), false, 1, nil, nil)
 	mqttSend(t, conn, c)
 	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
 	mqttDisconnect(t, conn)
@@ -30,7 +30,7 @@ func TestConnect_sessionPresent(t *testing.T) {
 
 func TestConnect_will_qos_0(t *testing.T) {
 	conn1 := mqttConnect(t, mqttPort)
-	mqttSend(t, conn1, pkg.NewConnect("testclient-"+nuid.Next(), true, 1, nil, "", nil))
+	mqttSend(t, conn1, pkg.NewConnect("testclient-"+nuid.Next(), true, 1, nil, nil))
 	mqttExpect(t, conn1, pkg.NewAckConnect(false, 0))
 	mid := nextPackageID()
 	mqttSend(t, conn1, pkg.NewSubscribe(mid, pkg.Topic{Name: "testing/my/will"}))
@@ -41,7 +41,7 @@ func TestConnect_will_qos_0(t *testing.T) {
 		pkg.NewConnect("testclient-"+nuid.Next(), true, 1,
 			&pkg.Will{
 				Topic:   "testing/my/will",
-				Message: []byte("the will message")}, "", nil))
+				Message: []byte("the will message")}, nil))
 	mqttExpect(t, conn2, pkg.NewAckConnect(false, 0))
 	// forcefully close connection
 	_ = conn2.Close()
@@ -60,7 +60,7 @@ func TestConnect_will_qos_1(t *testing.T) {
 		pkg.NewConnect("testclient-"+nuid.Next(), true, 1, &pkg.Will{
 			Topic:   "testing/my/will",
 			Message: []byte("the will message"),
-			QoS:     1}, "", nil))
+			QoS:     1}, nil))
 	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
 	// forcefully close connection
 	_ = conn.Close()
@@ -87,7 +87,7 @@ func TestConnect_will_retain_qos_0(t *testing.T) {
 		pkg.NewConnect("testclient-"+nuid.Next(), true, 5, &pkg.Will{
 			Topic:   willTopic,
 			Message: []byte("the will message"),
-			Retain:  true}, "", nil))
+			Retain:  true}, nil))
 	mqttExpect(t, c1, pkg.NewAckConnect(false, 0))
 
 	gotIt := make(chan bool, 1)
@@ -134,7 +134,7 @@ func TestConnect_will_retain_qos_1(t *testing.T) {
 			Topic:   willTopic,
 			Message: willPayload,
 			QoS:     1,
-			Retain:  true}, "", nil))
+			Retain:  true}, nil))
 	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
 	// forcefully close connection
 	_ = conn.Close()
@@ -183,7 +183,7 @@ func TestConnect_will_retain_qos_1_restart(t *testing.T) {
 			Topic:   willTopic,
 			Message: willPayload,
 			QoS:     1,
-			Retain:  true}, "", nil))
+			Retain:  true}, nil))
 	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
 	// forcefully close connection
 	_ = conn.Close()
@@ -239,10 +239,14 @@ func TestConnect_will_qos_1_restart(t *testing.T) {
 	willTopic := "testing/my/will"
 	willPayload := []byte("the will message")
 	mqttSend(t, conn,
-		pkg.NewConnect("testclient-"+nuid.Next(), true, 5, &pkg.Will{
-			Topic:   willTopic,
-			Message: willPayload,
-			QoS:     1}, "bob", []byte("password")))
+		pkg.NewConnect("testclient-"+nuid.Next(), true, 5,
+			&pkg.Will{
+				Topic:   willTopic,
+				Message: willPayload,
+				QoS:     1},
+			&pkg.Credentials{
+				User:     "bob",
+				Password: []byte("password")}))
 	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
 	// forcefully close connection
 	_ = conn.Close()
@@ -293,7 +297,7 @@ func TestPing_beforeConnect(t *testing.T) {
 
 func TestConnect_badProtocolVersion(t *testing.T) {
 	conn := mqttConnect(t, mqttPort)
-	cp := pkg.NewConnect("testclient-"+nuid.Next(), true, 1, nil, "", nil)
+	cp := pkg.NewConnect("testclient-"+nuid.Next(), true, 1, nil, nil)
 	cp.SetClientLevel(3)
 	mqttSend(t, conn, cp)
 	mqttExpect(t, conn, pkg.NewAckConnect(false, pkg.RtUnacceptableProtocolVersion))
@@ -302,6 +306,6 @@ func TestConnect_badProtocolVersion(t *testing.T) {
 
 func TestConnect_multiple(t *testing.T) {
 	conn := mqttConnectClean(t, mqttPort)
-	mqttSend(t, conn, pkg.NewConnect("testclient-"+nuid.Next(), true, 1, nil, "", nil))
+	mqttSend(t, conn, pkg.NewConnect("testclient-"+nuid.Next(), true, 1, nil, nil))
 	mqttExpectConnReset(t, conn)
 }

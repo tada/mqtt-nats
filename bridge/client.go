@@ -44,7 +44,6 @@ type client struct {
 	server         Server
 	log            logger.Logger
 	mqttConn       net.Conn
-	natsOpts       *nats.Options
 	natsConn       *nats.Conn
 	session        Session
 	connectPackage *pkg.Connect
@@ -135,12 +134,11 @@ func (c *client) SetDisconnected(err error) {
 
 	if doit {
 		if cp := c.connectPackage; cp != nil && cp.HasWill() {
-			w := cp.Will()
-			err := c.publish(w.Topic, w.QoS, w.Retain, w.Message)
+			err := c.server.PublishWill(cp.Will(), cp.Credentials())
 			if err != nil {
 				c.Error(err)
 			} else {
-				c.Debug("will published to", w.Topic)
+				c.Debug("will published to", cp.Will().Topic)
 			}
 		}
 		// This package will not be sent but it will terminate the write loop once everything else
@@ -308,10 +306,7 @@ readNextPackage:
 func (c *client) handleConnect(cp *pkg.Connect) (time.Duration, error) {
 	var err error
 	c.connectPackage = cp
-	c.natsOpts, err = c.natsOptions()
-	if err == nil {
-		c.natsConn, err = c.natsOpts.Connect()
-	}
+	c.natsConn, err = c.server.NatsConn(cp.Credentials())
 	if err != nil {
 		// TODO: Different error codes depending on error from NATS
 		c.Error("NATS connect failed", err)
@@ -406,22 +401,4 @@ func (c *client) PublishResponse(qos byte, pp *pkg.Publish) {
 		c.session.ClientAckRequested(pp)
 	}
 	c.queueForWrite(pp)
-}
-
-func (c *client) publish(topic string, qos byte, retain bool, payload []byte) error {
-	id := uint16(0)
-	if qos > 0 {
-		id = c.server.NextFreePackageID()
-	}
-	pp := pkg.NewPublish2(id, topic, payload, qos, false, retain)
-	err := c.natsPublish(pp)
-	if err == nil {
-		if retain {
-			c.server.HandleRetain(pp)
-		} else if qos > 0 {
-			pp.SetDup()
-			c.server.TrackAckReceived(pp, c.connectPackage)
-		}
-	}
-	return err
 }

@@ -8,21 +8,6 @@ import (
 	"github.com/tada/mqtt-nats/mqtt/pkg"
 )
 
-func (c *client) natsOptions() (*nats.Options, error) {
-	var user *string
-	var password []byte
-	if cp := c.connectPackage; cp != nil {
-		if cp.HasUserName() {
-			n := cp.Username()
-			user = &n
-		}
-		if cp.HasPassword() {
-			password = cp.Password()
-		}
-	}
-	return c.server.NatsOptions(user, password)
-}
-
 func (c *client) natsPublish(pp *pkg.Publish) error {
 	var err error
 	if pp.IsDup() {

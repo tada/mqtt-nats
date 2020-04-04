@@ -26,7 +26,7 @@ func mqttConnect(t *testing.T, port int) net.Conn {
 // initial connect package for a clean session and awaits the CONNACK.
 func mqttConnectClean(t *testing.T, port int) net.Conn {
 	conn := mqttConnect(t, port)
-	mqttSend(t, conn, pkg.NewConnect("testclient-"+nuid.Next(), true, 1, nil, "", nil))
+	mqttSend(t, conn, pkg.NewConnect("testclient-"+nuid.Next(), true, 1, nil, nil))
 	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
 	return conn
 }

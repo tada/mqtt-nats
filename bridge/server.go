@@ -34,12 +34,43 @@ import (
 type Server interface {
 	pkg.IDManager
 	SessionManager() SessionManager
-	TrackAckReceived(pp *pkg.Publish, connectPackage *pkg.Connect)
+	TrackAckReceived(pp *pkg.Publish, creds *pkg.Credentials)
 	ManageClient(c Client)
-	NatsOptions(user *string, password []byte) (*nats.Options, error)
+	NatsConn(creds *pkg.Credentials) (*nats.Conn, error)
 	HandleRetain(pp *pkg.Publish) *pkg.Publish
 	PublishMatching(sp *pkg.Subscribe, c Client)
+	PublishWill(will *pkg.Will, creds *pkg.Credentials) error
 	MessagesMatchingRetainRequest(m *nats.Msg) ([]*pkg.Publish, []byte)
+}
+
+func (s *server) PublishWill(will *pkg.Will, creds *pkg.Credentials) error {
+	id := uint16(0)
+	qos := will.QoS
+	if qos > 0 {
+		id = s.NextFreePackageID()
+	}
+	pp := pkg.NewPublish2(id, will.Topic, will.Message, qos, false, will.Retain)
+	nc, err := s.NatsConn(creds)
+	if err == nil {
+		defer nc.Close()
+		natsSubj := mqtt.ToNATS(will.Topic)
+		if qos == 0 {
+			err = nc.Publish(natsSubj, will.Message)
+		} else {
+			// use client id and package id to form a reply subject
+			replyTo := NewReplyTopic(s.session, pp).String()
+			err = nc.PublishRequest(natsSubj, replyTo, will.Message)
+		}
+		if err == nil {
+			if will.Retain {
+				s.HandleRetain(pp)
+			} else if qos > 0 {
+				pp.SetDup()
+				s.TrackAckReceived(pp, creds)
+			}
+		}
+	}
+	return err
 }
 
 type Bridge interface {
@@ -202,10 +233,11 @@ func (s *server) drainAndShutdown() error {
 }
 
 func (s *server) startRetainedRequestHandler() error {
-	conn, err := s.getNatsConn()
-	if err == nil {
-		_, err = conn.Subscribe(s.opts.RetainedRequestTopic, s.handleRetainedRequest)
+	conn, err := s.serverNatsConn()
+	if err != nil {
+		return err
 	}
+	_, err = conn.Subscribe(s.opts.RetainedRequestTopic, s.handleRetainedRequest)
 	return err
 }
 
@@ -250,7 +282,7 @@ func (s *server) MessagesMatchingRetainRequest(m *nats.Msg) ([]*pkg.Publish, []b
 	return s.retainedPackages.messagesMatchingRetainRequest(m)
 }
 
-func (s *server) NatsOptions(user *string, password []byte) (*nats.Options, error) {
+func (s *server) natsOptions(creds *pkg.Credentials) (*nats.Options, error) {
 	opts := nats.GetDefaultOptions()
 	opts.Servers = strings.Split(s.opts.NATSUrls, ",")
 	optFuncs := s.opts.NATSOpts
@@ -259,29 +291,22 @@ func (s *server) NatsOptions(user *string, password []byte) (*nats.Options, erro
 			return nil, err
 		}
 	}
-	if user != nil {
-		opts.User = *user
-	}
-	if password != nil {
-		// TODO: Handle password correctly, definitions differ
-		opts.Password = string(password)
+	if creds != nil {
+		opts.User = creds.User
+		if creds.Password != nil {
+			// TODO: Handle password correctly, definitions differ
+			opts.Password = string(creds.Password)
+		}
 	}
 	return &opts, nil
 }
 
 // TrackAckReceived is used when a publish using QoS > 0 originates from this server and needs to be
 // maintained until an ack is received. One example of when this happens is when a client will has QoS > 0
-func (s *server) TrackAckReceived(pp *pkg.Publish, cp *pkg.Connect) {
+func (s *server) TrackAckReceived(pp *pkg.Publish, creds *pkg.Credentials) {
 	s.Debug("track", pp)
 	s.trackAckLock.Lock()
-	np := natsPub{pp: pp}
-	if cp.HasUserName() {
-		n := cp.Username()
-		np.user = &n
-	}
-	if cp.HasPassword() {
-		np.password = cp.Password()
-	}
+	np := natsPub{pp: pp, creds: creds}
 	if s.pubAcks == nil {
 		s.pubAcks = make(map[uint16]*natsPub)
 		s.pubAckTimer = time.AfterFunc(s.pubAckTimeout, s.ackCheckTick)
@@ -310,20 +335,35 @@ func (s *server) awaitsAckSnapshot() []*natsPub {
 	return nps
 }
 
-func (s *server) getNatsConn() (*nats.Conn, error) {
+func (s *server) NatsConn(creds *pkg.Credentials) (*nats.Conn, error) {
+	var nc *nats.Conn
+	natsOpts, err := s.natsOptions(creds)
+	if err == nil {
+		nc, err = natsOpts.Connect()
+	}
+	return nc, err
+}
+
+func (s *server) serverNatsConn() (*nats.Conn, error) {
 	var err error
 	if s.natsConn == nil {
-		var natsOpts *nats.Options
-		natsOpts, err = s.NatsOptions(nil, nil)
-		if err == nil {
-			s.natsConn, err = natsOpts.Connect()
-		}
+		s.natsConn, err = s.NatsConn(nil)
 	}
 	return s.natsConn, err
 }
 
 func (s *server) republish(np *natsPub) {
-	conn, err := s.getNatsConn()
+	var (
+		conn *nats.Conn
+		err  error
+	)
+	if np.creds == nil {
+		conn, err = s.serverNatsConn()
+	} else if conn, err = s.NatsConn(np.creds); err == nil {
+		// temporary connection with credentials from the client where the
+		// message originated, must be closed on function return
+		defer conn.Close()
+	}
 	if err != nil {
 		s.Error(err)
 		return

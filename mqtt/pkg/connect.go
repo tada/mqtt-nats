@@ -70,7 +70,7 @@ type Will struct {
 	Retain  bool
 }
 
-// Equals returns true if this will is equal to the given will, false if not
+// Equals returns true if this instance is equal to the given instance, false if not
 func (w *Will) Equals(ow *Will) bool {
 	return w.Retain == ow.Retain && w.QoS == ow.QoS && w.Topic == ow.Topic && bytes.Equal(w.Message, ow.Message)
 }
@@ -78,8 +78,7 @@ func (w *Will) Equals(ow *Will) bool {
 // Connect is the MQTT connect package
 type Connect struct {
 	clientID    string
-	userName    string
-	password    []byte
+	creds       *Credentials
 	will        *Will
 	keepAlive   uint16
 	clientLevel byte
@@ -87,7 +86,7 @@ type Connect struct {
 }
 
 // NewConnect creates a new MQTT connect package
-func NewConnect(clientID string, cleanSession bool, keepAlive uint16, will *Will, userName string, password []byte) *Connect {
+func NewConnect(clientID string, cleanSession bool, keepAlive uint16, will *Will, creds *Credentials) *Connect {
 	flags := byte(0)
 	if cleanSession {
 		flags |= cleanSessionFlag
@@ -98,17 +97,18 @@ func NewConnect(clientID string, cleanSession bool, keepAlive uint16, will *Will
 			flags |= willRetainFlag
 		}
 	}
-	if len(password) > 0 {
-		flags |= passwordFlag
-	}
-	if len(userName) > 0 {
-		flags |= userNameFlag
+	if creds != nil {
+		if len(creds.Password) > 0 {
+			flags |= passwordFlag
+		}
+		if len(creds.User) > 0 {
+			flags |= userNameFlag
+		}
 	}
 
 	return &Connect{
 		clientID:    clientID,
-		userName:    userName,
-		password:    password,
+		creds:       creds,
 		keepAlive:   keepAlive,
 		clientLevel: 0x4,
 		flags:       flags,
@@ -170,16 +170,18 @@ func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (*Connect, error) {
 	}
 
 	// User Name
-	if c.HasUserName() {
-		if c.userName, err = r.ReadString(); err != nil {
-			return nil, err
+	if (c.flags & (userNameFlag | passwordFlag)) != 0 {
+		c.creds = &Credentials{}
+		if c.HasUserName() {
+			if c.creds.User, err = r.ReadString(); err != nil {
+				return nil, err
+			}
 		}
-	}
-
-	// Password
-	if c.HasPassword() {
-		if c.password, err = r.ReadBytes(); err != nil {
-			return nil, err
+		// Password
+		if c.HasPassword() {
+			if c.creds.Password, err = r.ReadBytes(); err != nil {
+				return nil, err
+			}
 		}
 	}
 	return c, nil
@@ -194,8 +196,7 @@ func (c *Connect) Equals(p Package) bool {
 		c.flags == oc.flags &&
 		c.clientID == oc.clientID &&
 		(c.will == oc.will || (c.will != nil && c.will.Equals(oc.will))) &&
-		c.userName == oc.userName &&
-		bytes.Equal(c.password, oc.password)
+		(c.creds == oc.creds || (c.creds != nil && c.creds.Equals(oc.creds)))
 }
 
 // SetClientLevel sets the client level. Intended for testing purposes
@@ -216,10 +217,10 @@ func (c *Connect) Write(w *mqtt.Writer) {
 		pkLen += 2 + len(c.will.Message)
 	}
 	if c.HasUserName() {
-		pkLen += 2 + len(c.userName)
+		pkLen += 2 + len(c.creds.User)
 	}
 	if c.HasPassword() {
-		pkLen += 2 + len(c.password)
+		pkLen += 2 + len(c.creds.Password)
 	}
 
 	w.WriteU8(TpConnect)
@@ -234,10 +235,10 @@ func (c *Connect) Write(w *mqtt.Writer) {
 		w.WriteBytes(c.will.Message)
 	}
 	if c.HasUserName() {
-		w.WriteString(c.userName)
+		w.WriteString(c.creds.User)
 	}
 	if c.HasPassword() {
-		w.WriteBytes(c.password)
+		w.WriteBytes(c.creds.Password)
 	}
 }
 
@@ -271,9 +272,9 @@ func (c *Connect) KeepAlive() time.Duration {
 	return time.Duration(c.keepAlive) * time.Second
 }
 
-// Password returns the contained password or nil
-func (c *Connect) Password() []byte {
-	return c.password
+// Credentials returns the user name and password credentials or nil
+func (c *Connect) Credentials() *Credentials {
+	return c.creds
 }
 
 // String returns a brief string representation of the package. Suitable for logging
@@ -284,11 +285,6 @@ func (c *Connect) String() string {
 // Type returns the MQTT Package type
 func (c *Connect) Type() byte {
 	return TpConnect
-}
-
-// Username returns the user name or an empty string
-func (c *Connect) Username() string {
-	return c.userName
 }
 
 // Will returns the client will or nil
