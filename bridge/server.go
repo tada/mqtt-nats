@@ -34,43 +34,12 @@ import (
 type Server interface {
 	pkg.IDManager
 	SessionManager() SessionManager
-	TrackAckReceived(pp *pkg.Publish, creds *pkg.Credentials)
 	ManageClient(c Client)
 	NatsConn(creds *pkg.Credentials) (*nats.Conn, error)
 	HandleRetain(pp *pkg.Publish) *pkg.Publish
 	PublishMatching(sp *pkg.Subscribe, c Client)
 	PublishWill(will *pkg.Will, creds *pkg.Credentials) error
 	MessagesMatchingRetainRequest(m *nats.Msg) ([]*pkg.Publish, []byte)
-}
-
-func (s *server) PublishWill(will *pkg.Will, creds *pkg.Credentials) error {
-	id := uint16(0)
-	qos := will.QoS
-	if qos > 0 {
-		id = s.NextFreePackageID()
-	}
-	pp := pkg.NewPublish2(id, will.Topic, will.Message, qos, false, will.Retain)
-	nc, err := s.NatsConn(creds)
-	if err == nil {
-		defer nc.Close()
-		natsSubj := mqtt.ToNATS(will.Topic)
-		if qos == 0 {
-			err = nc.Publish(natsSubj, will.Message)
-		} else {
-			// use client id and package id to form a reply subject
-			replyTo := NewReplyTopic(s.session, pp).String()
-			err = nc.PublishRequest(natsSubj, replyTo, will.Message)
-		}
-		if err == nil {
-			if will.Retain {
-				s.HandleRetain(pp)
-			} else if qos > 0 {
-				pp.SetDup()
-				s.TrackAckReceived(pp, creds)
-			}
-		}
-	}
-	return err
 }
 
 type Bridge interface {
@@ -301,9 +270,39 @@ func (s *server) natsOptions(creds *pkg.Credentials) (*nats.Options, error) {
 	return &opts, nil
 }
 
-// TrackAckReceived is used when a publish using QoS > 0 originates from this server and needs to be
+func (s *server) PublishWill(will *pkg.Will, creds *pkg.Credentials) error {
+	id := uint16(0)
+	qos := will.QoS
+	if qos > 0 {
+		id = s.NextFreePackageID()
+	}
+	pp := pkg.NewPublish2(id, will.Topic, will.Message, qos, false, will.Retain)
+	nc, err := s.NatsConn(creds)
+	if err == nil {
+		defer nc.Close()
+		natsSubj := mqtt.ToNATS(will.Topic)
+		if qos == 0 {
+			err = nc.Publish(natsSubj, will.Message)
+		} else {
+			// use client id and package id to form a reply subject
+			replyTo := NewReplyTopic(s.session, pp).String()
+			err = nc.PublishRequest(natsSubj, replyTo, will.Message)
+		}
+		if err == nil {
+			if will.Retain {
+				s.HandleRetain(pp)
+			} else if qos > 0 {
+				pp.SetDup()
+				s.trackAckReceived(pp, creds)
+			}
+		}
+	}
+	return err
+}
+
+// trackAckReceived is used when a publish using QoS > 0 originates from this server and needs to be
 // maintained until an ack is received. One example of when this happens is when a client will has QoS > 0
-func (s *server) TrackAckReceived(pp *pkg.Publish, creds *pkg.Credentials) {
+func (s *server) trackAckReceived(pp *pkg.Publish, creds *pkg.Credentials) {
 	s.Debug("track", pp)
 	s.trackAckLock.Lock()
 	np := natsPub{pp: pp, creds: creds}
