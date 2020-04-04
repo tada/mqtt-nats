@@ -23,7 +23,7 @@ jobs:
       run: ./bin/golangci-lint run ./...
 
     - name: Test
-      run: go test -v -covermode=atomic  -coverpkg=./... -coverprofile coverage.tmp $(go list ./... | grep -Fv /examples)
+      run: go test -v -covermode=atomic  -coverpkg=./... -coverprofile coverage.tmp $(go list ./... | grep -Fv -e /examples -e /cli)
 
 #    - name: Test Coverage Check
 #      run: |

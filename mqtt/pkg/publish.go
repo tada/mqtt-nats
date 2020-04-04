@@ -67,7 +67,7 @@ func NewPublish2(id uint16, topic string, payload []byte, qos byte, dup bool, re
 }
 
 // ParsePublish parses the publish package from the given reader.
-func ParsePublish(r *mqtt.Reader, flags byte, pkLen int) (*Publish, error) {
+func ParsePublish(r *mqtt.Reader, flags byte, pkLen int) (Package, error) {
 	var err error
 	if r, err = r.ReadPackage(pkLen); err != nil {
 		return nil, err
@@ -200,11 +200,6 @@ func (p *Publish) TopicName() string {
 	return p.name
 }
 
-// Type returns the MQTT Package type
-func (p *Publish) Type() byte {
-	return TpPublish
-}
-
 // UnmarshalFromJSON expects the given token to be the object start '{'. If it is, the rest
 // of the object is unmarshalled into the receiver. The method will panic with a pio.Error
 // if any errors are detected.
@@ -257,9 +252,9 @@ func (p *Publish) Write(w *mqtt.Writer) {
 type PubAck uint16
 
 // ParsePubAck parses a PUBACK package
-func ParsePubAck(r *mqtt.Reader, _ byte, pkLen int) (PubAck, error) {
+func ParsePubAck(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	if pkLen != 2 {
-		return 0, errors.New("malformed PUBACK")
+		return PubAck(0), errors.New("malformed PUBACK")
 	}
 	id, err := r.ReadUint16()
 	return PubAck(id), err
@@ -280,11 +275,6 @@ func (p PubAck) String() string {
 	return fmt.Sprintf("PUBACK (m%d)", int(p))
 }
 
-// Type returns the MQTT Package type
-func (p PubAck) Type() byte {
-	return TpPubAck
-}
-
 // Write writes the MQTT bits of this package on the given Writer
 func (p PubAck) Write(w *mqtt.Writer) {
 	w.WriteU8(TpPubAck)
@@ -296,9 +286,9 @@ func (p PubAck) Write(w *mqtt.Writer) {
 type PubRec uint16
 
 // ParsePubRec parses a PUBREC package
-func ParsePubRec(r *mqtt.Reader, _ byte, pkLen int) (PubRec, error) {
+func ParsePubRec(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	if pkLen != 2 {
-		return 0, errors.New("malformed PUBREC")
+		return PubRec(0), errors.New("malformed PUBREC")
 	}
 	id, err := r.ReadUint16()
 	return PubRec(id), err
@@ -319,11 +309,6 @@ func (p PubRec) String() string {
 	return fmt.Sprintf("PUBREC (m%d)", int(p))
 }
 
-// Type returns the MQTT Package type
-func (p PubRec) Type() byte {
-	return TpPubRec
-}
-
 // Write writes the MQTT bits of this package on the given Writer
 func (p PubRec) Write(w *mqtt.Writer) {
 	w.WriteU8(TpPubRec)
@@ -335,9 +320,9 @@ func (p PubRec) Write(w *mqtt.Writer) {
 type PubRel uint16
 
 // ParsePubRel parses a PUBREL package
-func ParsePubRel(r *mqtt.Reader, _ byte, pkLen int) (PubRel, error) {
+func ParsePubRel(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	if pkLen != 2 {
-		return 0, errors.New("malformed PUBREL")
+		return PubRel(0), errors.New("malformed PUBREL")
 	}
 	id, err := r.ReadUint16()
 	return PubRel(id), err
@@ -358,11 +343,6 @@ func (p PubRel) String() string {
 	return fmt.Sprintf("PUBREL (m%d)", int(p))
 }
 
-// Type returns the MQTT Package type
-func (p PubRel) Type() byte {
-	return TpPubRel
-}
-
 // Write writes the MQTT bits of this package on the given Writer
 func (p PubRel) Write(w *mqtt.Writer) {
 	w.WriteU8(TpPubRel)
@@ -374,9 +354,9 @@ func (p PubRel) Write(w *mqtt.Writer) {
 type PubComp uint16
 
 // ParsePubComp parses a PUBCOMP package
-func ParsePubComp(r *mqtt.Reader, _ byte, pkLen int) (PubComp, error) {
+func ParsePubComp(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	if pkLen != 2 {
-		return 0, errors.New("malformed PUBCOMP")
+		return PubComp(0), errors.New("malformed PUBCOMP")
 	}
 	id, err := r.ReadUint16()
 	return PubComp(id), err
@@ -395,11 +375,6 @@ func (p PubComp) ID() uint16 {
 // String returns a brief string representation of the package. Suitable for logging
 func (p PubComp) String() string {
 	return fmt.Sprintf("PUBCOMP (m%d)", int(p))
-}
-
-// Type returns the MQTT Package type
-func (p PubComp) Type() byte {
-	return TpPubComp
 }
 
 // Write writes the MQTT bits of this package on the given Writer

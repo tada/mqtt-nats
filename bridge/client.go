@@ -226,6 +226,7 @@ readNextPackage:
 			break
 		}
 
+		var p pkg.Package
 		switch pkgType {
 		case pkg.TpDisconnect:
 			// Normal disconnect
@@ -238,63 +239,56 @@ readNextPackage:
 			c.Debug("received", pr)
 			c.queueForWrite(pkg.PingResponseSingleton)
 		case pkg.TpConnect:
-			var cp *pkg.Connect
-			if cp, err = pkg.ParseConnect(r, b, rl); err == nil {
-				c.Debug("received", cp)
-				maxWait, err = c.handleConnect(cp)
+			if p, err = pkg.ParseConnect(r, b, rl); err == nil {
+				c.Debug("received", p)
+				maxWait, err = c.handleConnect(p.(*pkg.Connect))
 				if err == nil {
 					c.server.ManageClient(c)
 				}
 			}
 			if retCode, ok := err.(pkg.ReturnCode); ok {
-				c.Debug("received", cp, "return code", retCode)
+				c.Debug("received", p, "return code", retCode)
 				c.setState(StateConnected)
 				c.queueForWrite(pkg.NewAckConnect(c.sessionPresent, retCode))
 			}
 		case pkg.TpPublish:
-			var pp *pkg.Publish
-			if pp, err = pkg.ParsePublish(r, b, rl); err == nil {
-				c.Debug("received", pp)
-				err = c.natsPublish(c.server.HandleRetain(pp))
+			if p, err = pkg.ParsePublish(r, b, rl); err == nil {
+				c.Debug("received", p)
+				err = c.natsPublish(c.server.HandleRetain(p.(*pkg.Publish)))
 			}
 		case pkg.TpPubAck:
-			var pa pkg.PubAck
-			if pa, err = pkg.ParsePubAck(r, b, rl); err == nil {
-				c.Debug("received", pa)
-				c.session.ClientAckReceived(pa.ID(), c.natsConn)
-				c.server.ReleasePackageID(pa.ID())
+			if p, err = pkg.ParsePubAck(r, b, rl); err == nil {
+				c.Debug("received", p)
+				c.session.ClientAckReceived(p.ID(), c.natsConn)
+				c.server.ReleasePackageID(p.ID())
 			}
 		case pkg.TpPubRec:
-			var pa pkg.PubRec
-			if pa, err = pkg.ParsePubRec(r, b, rl); err == nil {
-				c.Debug("received", pa)
+			if p, err = pkg.ParsePubRec(r, b, rl); err == nil {
+				c.Debug("received", p)
 				// TODO: handle PubRec
 			}
 		case pkg.TpPubRel:
-			var pa pkg.PubRel
-			if pa, err = pkg.ParsePubRel(r, b, rl); err == nil {
-				c.Debug("received", pa)
+			if p, err = pkg.ParsePubRel(r, b, rl); err == nil {
+				c.Debug("received", p)
 				// TODO: handle PubRel
 			}
 		case pkg.TpPubComp:
-			var pa pkg.PubComp
-			if pa, err = pkg.ParsePubComp(r, b, rl); err == nil {
-				c.Debug("received", pa)
+			if p, err = pkg.ParsePubComp(r, b, rl); err == nil {
+				c.Debug("received", p)
 				// TODO: handle PubComp
 			}
 		case pkg.TpSubscribe:
-			var sp *pkg.Subscribe
-			if sp, err = pkg.ParseSubscribe(r, b, rl); err == nil {
-				c.Debug("received", sp)
+			if p, err = pkg.ParseSubscribe(r, b, rl); err == nil {
+				c.Debug("received", p)
+				sp := p.(*pkg.Subscribe)
 				if err = c.natsSubscribe(sp); err == nil {
 					c.server.PublishMatching(sp, c)
 				}
 			}
 		case pkg.TpUnsubscribe:
-			var up *pkg.Unsubscribe
-			if up, err = pkg.ParseUnsubscribe(r, b, rl); err == nil {
-				c.Debug("received", up)
-				c.natsUnsubscribe(up)
+			if p, err = pkg.ParseUnsubscribe(r, b, rl); err == nil {
+				c.Debug("received", p)
+				c.natsUnsubscribe(p.(*pkg.Unsubscribe))
 			}
 		default:
 			c.Debug("received unknown package type", (b&pkg.TpMask)>>4)

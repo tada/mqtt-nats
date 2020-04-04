@@ -31,7 +31,7 @@ func NewSubscribe(id uint16, topics ...Topic) *Subscribe {
 }
 
 // ParseSubscribe parses the subscribe package from the given reader.
-func ParseSubscribe(r *mqtt.Reader, b byte, pkLen int) (*Subscribe, error) {
+func ParseSubscribe(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
 	if (b & 0xf) != fixedSubscribeFlags {
 		return nil, errors.New("malformed subscribe header")
 	}
@@ -115,11 +115,6 @@ func (s *Subscribe) Topics() []Topic {
 	return s.topics
 }
 
-// Type returns the MQTT Package type
-func (s *Subscribe) Type() byte {
-	return TpSubscribe
-}
-
 // Write writes the MQTT bits of this package on the given Writer
 func (s *Subscribe) Write(w *mqtt.Writer) {
 	pkLen := 2 // id
@@ -148,7 +143,7 @@ func NewSubAck(id uint16, topicReturns ...byte) *SubAck {
 }
 
 // ParseSubAck parses a SUBACK package
-func ParseSubAck(r *mqtt.Reader, b byte, pkLen int) (*SubAck, error) {
+func ParseSubAck(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
 	var err error
 	if r, err = r.ReadPackage(pkLen); err != nil {
 		return nil, err
@@ -200,11 +195,6 @@ func (s *SubAck) String() string {
 // TopicReturns returns the desired QoS value for each subscribed topic
 func (s *SubAck) TopicReturns() []byte {
 	return s.topicReturns
-}
-
-// Type returns the MQTT Package type
-func (s *SubAck) Type() byte {
-	return TpSubAck
 }
 
 // Write writes the MQTT bits of this package on the given Writer

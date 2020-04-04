@@ -116,7 +116,7 @@ func NewConnect(clientID string, cleanSession bool, keepAlive uint16, will *Will
 }
 
 // ParseConnect parses the connect package from the given reader.
-func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (*Connect, error) {
+func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	var err error
 	if r, err = r.ReadPackage(pkLen); err != nil {
 		return nil, err
@@ -185,6 +185,11 @@ func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (*Connect, error) {
 		}
 	}
 	return c, nil
+}
+
+// ID always returns 0 for a connection package
+func (c *Connect) ID() uint16 {
+	return 0
 }
 
 // Equals returns true if this package is equal to the given package, false if not
@@ -282,11 +287,6 @@ func (c *Connect) String() string {
 	return "CONNECT"
 }
 
-// Type returns the MQTT Package type
-func (c *Connect) Type() byte {
-	return TpConnect
-}
-
 // Will returns the client will or nil
 func (c *Connect) Will() *Will {
 	return c.will
@@ -314,7 +314,7 @@ func NewAckConnect(sessionPresent bool, returnCode ReturnCode) Package {
 }
 
 // ParseAckConnect parses a CONNACK package
-func ParseAckConnect(r *mqtt.Reader, _ byte, pkLen int) (*AckConnect, error) {
+func ParseAckConnect(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	var err error
 	if pkLen != 2 {
 		return nil, errors.New("malformed CONNACK")
@@ -327,6 +327,11 @@ func ParseAckConnect(r *mqtt.Reader, _ byte, pkLen int) (*AckConnect, error) {
 	return &AckConnect{flags: bs[0], returnCode: bs[1]}, nil
 }
 
+// ID always returns 0 for a CONNACK package
+func (a *AckConnect) ID() uint16 {
+	return 0
+}
+
 // Equals returns true if this package is equal to the given package, false if not
 func (a *AckConnect) Equals(p Package) bool {
 	ac, ok := p.(*AckConnect)
@@ -336,11 +341,6 @@ func (a *AckConnect) Equals(p Package) bool {
 // String returns a brief string representation of the package. Suitable for logging
 func (a *AckConnect) String() string {
 	return fmt.Sprintf("CONNACK (s%d, rt%d)", a.flags, a.returnCode)
-}
-
-// Type returns the MQTT Package type
-func (a *AckConnect) Type() byte {
-	return TpPingResp
 }
 
 // Write writes the MQTT bits of this package on the given Writer
@@ -357,14 +357,14 @@ type Disconnect int
 // DisconnectSingleton is the one and only instance of the Disconnect type
 const DisconnectSingleton = Disconnect(0)
 
+// ID always returns 0 for a DISCONNECT package
+func (a Disconnect) ID() uint16 {
+	return 0
+}
+
 // Equals returns true if this package is equal to the given package, false if not
 func (Disconnect) Equals(p Package) bool {
 	return p == DisconnectSingleton
-}
-
-// Type returns the MQTT Package type
-func (Disconnect) Type() byte {
-	return TpDisconnect
 }
 
 // String returns a brief string representation of the package. Suitable for logging

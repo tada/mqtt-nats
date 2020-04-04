@@ -15,19 +15,22 @@ import (
 
 var mqttServer bridge.Bridge
 
+const storageFile = "mqtt-nats.json"
+
 func TestMain(m *testing.M) {
+	_ = os.Remove(storageFile)
 	natsServer := NATSServerOnPort(natsPort)
 
 	// NOTE: Setting level to logger.Debug here is very helpful when authoring and debugging tests but
 	//  it also makes the tests very verbose.
-	lg := logger.New(logger.Debug, os.Stdout, os.Stderr)
+	lg := logger.New(logger.Silent, os.Stdout, os.Stderr)
 
 	opts := bridge.Options{
 		Port:                 mqttPort,
 		NATSUrls:             ":" + strconv.Itoa(natsPort),
 		RepeatRate:           50,
 		RetainedRequestTopic: retainedRequestTopic,
-		StoragePath:          "mqtt-nats.json"}
+		StoragePath:          storageFile}
 	var err error
 	mqttServer, err = RunBridgeOnPorts(lg, &opts)
 
@@ -99,7 +102,7 @@ func assertMessageReceived(t *testing.T, c <-chan bool) {
 	t.Helper()
 	select {
 	case <-c:
-	case <-time.After(time.Second):
+	case <-time.After(100 * time.Millisecond):
 		t.Fatalf(`expected package did not arrive`)
 	}
 }

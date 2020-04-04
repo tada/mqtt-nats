@@ -90,6 +90,9 @@ func mqttExpectConnReset(t *testing.T, conn net.Conn) {
 	t.Helper()
 	_, err := conn.Read([]byte{0})
 	if err != nil {
+		if strings.Contains(err.Error(), "EOF") {
+			return
+		}
 		if strings.Contains(err.Error(), "reset") {
 			return
 		}

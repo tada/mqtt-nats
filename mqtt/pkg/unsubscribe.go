@@ -21,7 +21,7 @@ func NewUnsubscribe(id uint16, topics ...string) *Unsubscribe {
 }
 
 // ParseUnsubscribe parses the unsubscribe package from the given reader.
-func ParseUnsubscribe(r *mqtt.Reader, b byte, pkLen int) (*Unsubscribe, error) {
+func ParseUnsubscribe(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
 	if (b & 0xf) != 2 {
 		return nil, errors.New("malformed unsubscribe header")
 	}
@@ -101,21 +101,21 @@ func (u *Unsubscribe) Topics() []string {
 	return u.topics
 }
 
-// Type returns the MQTT Package type
-func (u *Unsubscribe) Type() byte {
-	return TpUnsubscribe
-}
-
 // UnsubAck is the MQTT UNSUBACK package
 type UnsubAck uint16
 
 // ParseUnsubAck parses the unsubscribe package from the given reader.
-func ParseUnsubAck(r *mqtt.Reader, b byte, pkLen int) (UnsubAck, error) {
+func ParseUnsubAck(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
 	if pkLen != 2 {
-		return 0, errors.New("malformed UNSUBACK")
+		return UnsubAck(0), errors.New("malformed UNSUBACK")
 	}
 	id, err := r.ReadUint16()
 	return UnsubAck(id), err
+}
+
+// ID returns the package ID
+func (u UnsubAck) ID() uint16 {
+	return uint16(u)
 }
 
 // Equals returns true if this package is equal to the given package, false if not
@@ -126,11 +126,6 @@ func (u UnsubAck) Equals(other Package) bool {
 // String returns a brief string representation of the package. Suitable for logging
 func (u UnsubAck) String() string {
 	return fmt.Sprintf("UNSUBACK (m%d)", int(u))
-}
-
-// Type returns the MQTT Package type
-func (u UnsubAck) Type() byte {
-	return TpUnsubAck
 }
 
 // Write writes the MQTT bits of this package on the given Writer

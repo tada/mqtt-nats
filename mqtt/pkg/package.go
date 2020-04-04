@@ -52,12 +52,12 @@ const (
 
 // The Package interface is implemented by all MQTT package types
 type Package interface {
+	// ID returns the package ID or 0 if not applicable
+	ID() uint16
+
 	// Equals returns true if this package is equal to the given package, false if not
 	Equals(other Package) bool
 
 	// Write writes the MQTT bits of this package on the given Writer
 	Write(w *mqtt.Writer)
-
-	// Type returns the MQTT Package type
-	Type() byte
 }

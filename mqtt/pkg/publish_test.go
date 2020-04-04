@@ -1,29 +1,29 @@
 package pkg
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/tada/mqtt-nats/jsonstream"
-
-	"github.com/tada/mqtt-nats/mqtt"
 )
 
 func TestParsePublish(t *testing.T) {
-	p1 := NewPublish(23, "some/topic", 2, []byte(`the "message"`), false, "")
-	w := &mqtt.Writer{}
-	p1.Write(w)
+	writeReadAndCompare(t, NewPublish(23, "some/topic", 2, []byte(`the "message"`), false, ""), ParsePublish, "PUBLISH (d0, q1, r0, m23, 'some/topic', ... (13 bytes))")
+}
 
-	r := mqtt.NewReader(bytes.NewReader(w.Bytes()))
-	b, _ := r.ReadByte()
-	pl, _ := r.ReadVarInt()
-	p2, err := ParsePublish(r, b, pl)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !p1.Equals(p2) {
-		t.Fatal(p1, "!=", p2)
-	}
+func TestParsePubAck(t *testing.T) {
+	writeReadAndCompare(t, PubAck(23), ParsePubAck, "PUBACK (m23)")
+}
+
+func TestParsePubRec(t *testing.T) {
+	writeReadAndCompare(t, PubRec(23), ParsePubRec, "PUBREC (m23)")
+}
+
+func TestParsePubRel(t *testing.T) {
+	writeReadAndCompare(t, PubRel(23), ParsePubRel, "PUBREL (m23)")
+}
+
+func TestParsePubComp(t *testing.T) {
+	writeReadAndCompare(t, PubComp(23), ParsePubComp, "PUBCOMP (m23)")
 }
 
 func TestPublish_MarshalToJSON(t *testing.T) {
