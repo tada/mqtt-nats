@@ -24,7 +24,7 @@ const (
 	PublishDup = 0x08
 )
 
-// The Publish type represents the MQTT PUBLISH package
+// The Publish type represents the MQTT PUBLISH packet
 type Publish struct {
 	name     string
 	replyTo  string
@@ -34,12 +34,12 @@ type Publish struct {
 	sentByUs bool // set if the message originated from this server (happens when a client will is published)
 }
 
-// SimplePublish creates a new Publish package with all flags zero and no reply
+// SimplePublish creates a new Publish packet with all flags zero and no reply
 func SimplePublish(topic string, payload []byte) *Publish {
 	return &Publish{name: topic, payload: payload}
 }
 
-// NewPublish creates a new Publish package
+// NewPublish creates a new Publish packet
 func NewPublish(id uint16, topic string, flags byte, payload []byte, sentByUs bool, natsReplyTo string) *Publish {
 	return &Publish{
 		name:     topic,
@@ -51,7 +51,7 @@ func NewPublish(id uint16, topic string, flags byte, payload []byte, sentByUs bo
 	}
 }
 
-// NewPublish2 creates a new Publish package
+// NewPublish2 creates a new Publish packet
 func NewPublish2(id uint16, topic string, payload []byte, qos byte, dup bool, retain bool) *Publish {
 	flags := byte(0)
 	if qos > 0 {
@@ -66,10 +66,10 @@ func NewPublish2(id uint16, topic string, payload []byte, qos byte, dup bool, re
 	return &Publish{id: id, flags: flags, name: topic, payload: payload, sentByUs: false, replyTo: ""}
 }
 
-// ParsePublish parses the publish package from the given reader.
-func ParsePublish(r *mqtt.Reader, flags byte, pkLen int) (Package, error) {
+// ParsePublish parses the publish packet from the given reader.
+func ParsePublish(r *mqtt.Reader, flags byte, pkLen int) (Packet, error) {
 	var err error
-	if r, err = r.ReadPackage(pkLen); err != nil {
+	if r, err = r.ReadPacket(pkLen); err != nil {
 		return nil, err
 	}
 
@@ -89,8 +89,8 @@ func ParsePublish(r *mqtt.Reader, flags byte, pkLen int) (Package, error) {
 	return pp, nil
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (p *Publish) Equals(other Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (p *Publish) Equals(other Packet) bool {
 	op, ok := other.(*Publish)
 	return ok &&
 		p.id == op.id &&
@@ -101,22 +101,22 @@ func (p *Publish) Equals(other Package) bool {
 		bytes.Equal(p.payload, op.payload)
 }
 
-// Flags returns the package flags
+// Flags returns the packet flags
 func (p *Publish) Flags() byte {
 	return p.flags
 }
 
-// ID returns the MQTT Package Identifier. The identifier is only valid if QoS > 0
+// ID returns the MQTT Packet Identifier. The identifier is only valid if QoS > 0
 func (p *Publish) ID() uint16 {
 	return p.id
 }
 
-// IsDup returns true if the package is a duplicate of a previously sent package
+// IsDup returns true if the packet is a duplicate of a previously sent packet
 func (p *Publish) IsDup() bool {
 	return (p.flags & PublishDup) != 0
 }
 
-// SetDup sets the dup flag of the package
+// SetDup sets the dup flag of the packet
 func (p *Publish) SetDup() {
 	p.flags |= PublishDup
 }
@@ -133,7 +133,7 @@ func IsPrintableASCII(bs []byte) bool {
 	return true
 }
 
-// MarshalToJSON marshals the package as a JSON object onto the given writer
+// MarshalToJSON marshals the packet as a JSON object onto the given writer
 func (p *Publish) MarshalToJSON(w io.Writer) {
 	pio.WriteString(`{"flags":`, w)
 	pio.WriteInt(int64(p.flags), w)
@@ -157,7 +157,7 @@ func (p *Publish) MarshalToJSON(w io.Writer) {
 	pio.WriteByte('}', w)
 }
 
-// NatsReplyTo returns the NATS replyTo subject. Only valid when the package represents something
+// NatsReplyTo returns the NATS replyTo subject. Only valid when the packet represents something
 // received from NATS due to a client subscribing to a topic with QoS level > 0
 func (p *Publish) NatsReplyTo() string {
 	return p.replyTo
@@ -183,7 +183,7 @@ func (p *Publish) Retain() bool {
 	return (p.flags & PublishRetain) != 0
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (p *Publish) String() string {
 	// layout borrowed from mosquitto_sub log output
 	return fmt.Sprintf("PUBLISH (d%d, q%d, r%b, m%d, '%s', ... (%d bytes))",
@@ -233,7 +233,7 @@ func (p *Publish) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 	}
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (p *Publish) Write(w *mqtt.Writer) {
 	w.WriteU8(TpPublish | p.flags)
 	pkLen := 2 + len(p.name) + len(p.payload)
@@ -248,11 +248,11 @@ func (p *Publish) Write(w *mqtt.Writer) {
 	_, _ = w.Write(p.payload)
 }
 
-// The PubAck type represents the MQTT PUBACK package
+// The PubAck type represents the MQTT PUBACK packet
 type PubAck uint16
 
-// ParsePubAck parses a PUBACK package
-func ParsePubAck(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
+// ParsePubAck parses a PUBACK packet
+func ParsePubAck(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	if pkLen != 2 {
 		return PubAck(0), errors.New("malformed PUBACK")
 	}
@@ -260,33 +260,33 @@ func ParsePubAck(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	return PubAck(id), err
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (p PubAck) Equals(other Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (p PubAck) Equals(other Packet) bool {
 	return p == other
 }
 
-// ID returns the package ID
+// ID returns the packet ID
 func (p PubAck) ID() uint16 {
 	return uint16(p)
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (p PubAck) String() string {
 	return fmt.Sprintf("PUBACK (m%d)", int(p))
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (p PubAck) Write(w *mqtt.Writer) {
 	w.WriteU8(TpPubAck)
 	w.WriteU8(2)
 	w.WriteU16(uint16(p))
 }
 
-// The PubRec type represents the MQTT PUBREC package
+// The PubRec type represents the MQTT PUBREC packet
 type PubRec uint16
 
-// ParsePubRec parses a PUBREC package
-func ParsePubRec(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
+// ParsePubRec parses a PUBREC packet
+func ParsePubRec(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	if pkLen != 2 {
 		return PubRec(0), errors.New("malformed PUBREC")
 	}
@@ -294,33 +294,33 @@ func ParsePubRec(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	return PubRec(id), err
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (p PubRec) Equals(other Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (p PubRec) Equals(other Packet) bool {
 	return p == other
 }
 
-// ID returns the package ID
+// ID returns the packet ID
 func (p PubRec) ID() uint16 {
 	return uint16(p)
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (p PubRec) String() string {
 	return fmt.Sprintf("PUBREC (m%d)", int(p))
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (p PubRec) Write(w *mqtt.Writer) {
 	w.WriteU8(TpPubRec)
 	w.WriteU8(2)
 	w.WriteU16(uint16(p))
 }
 
-// The PubRel type represents the MQTT PUBREL package
+// The PubRel type represents the MQTT PUBREL packet
 type PubRel uint16
 
-// ParsePubRel parses a PUBREL package
-func ParsePubRel(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
+// ParsePubRel parses a PUBREL packet
+func ParsePubRel(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	if pkLen != 2 {
 		return PubRel(0), errors.New("malformed PUBREL")
 	}
@@ -328,33 +328,33 @@ func ParsePubRel(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	return PubRel(id), err
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (p PubRel) Equals(other Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (p PubRel) Equals(other Packet) bool {
 	return p == other
 }
 
-// ID returns the package ID
+// ID returns the packet ID
 func (p PubRel) ID() uint16 {
 	return uint16(p)
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (p PubRel) String() string {
 	return fmt.Sprintf("PUBREL (m%d)", int(p))
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (p PubRel) Write(w *mqtt.Writer) {
 	w.WriteU8(TpPubRel)
 	w.WriteU8(2)
 	w.WriteU16(uint16(p))
 }
 
-// The PubComp type represents the MQTT PUBCOMP package
+// The PubComp type represents the MQTT PUBCOMP packet
 type PubComp uint16
 
-// ParsePubComp parses a PUBCOMP package
-func ParsePubComp(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
+// ParsePubComp parses a PUBCOMP packet
+func ParsePubComp(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	if pkLen != 2 {
 		return PubComp(0), errors.New("malformed PUBCOMP")
 	}
@@ -362,22 +362,22 @@ func ParsePubComp(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	return PubComp(id), err
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (p PubComp) Equals(other Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (p PubComp) Equals(other Packet) bool {
 	return p == other
 }
 
-// ID returns the package ID
+// ID returns the packet ID
 func (p PubComp) ID() uint16 {
 	return uint16(p)
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (p PubComp) String() string {
 	return fmt.Sprintf("PUBCOMP (m%d)", int(p))
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (p PubComp) Write(w *mqtt.Writer) {
 	w.WriteU8(TpPubComp)
 	w.WriteU8(2)

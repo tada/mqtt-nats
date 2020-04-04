@@ -31,7 +31,7 @@ func TestConnect_will_qos_0(t *testing.T) {
 	conn1 := mqttConnect(t, mqttPort)
 	mqttSend(t, conn1, pkg.NewConnect(nextClientID(), true, 1, nil, nil))
 	mqttExpect(t, conn1, pkg.NewAckConnect(false, 0))
-	mid := nextPackageID()
+	mid := nextPacketID()
 	mqttSend(t, conn1, pkg.NewSubscribe(mid, pkg.Topic{Name: "testing/my/will"}))
 	mqttExpect(t, conn1, pkg.NewSubAck(mid, 0))
 
@@ -46,7 +46,7 @@ func TestConnect_will_qos_0(t *testing.T) {
 	_ = conn2.Close()
 
 	mqttExpect(t, conn1,
-		func(p pkg.Package) bool {
+		func(p pkg.Packet) bool {
 			pp, ok := p.(*pkg.Publish)
 			return ok && pp.TopicName() == "testing/my/will" && pp.QoSLevel() == 0 && !pp.IsDup() && !pp.Retain()
 		})
@@ -65,11 +65,11 @@ func TestConnect_will_qos_1(t *testing.T) {
 	_ = conn.Close()
 
 	conn = mqttConnectClean(t, mqttPort)
-	mid := nextPackageID()
+	mid := nextPacketID()
 	mqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: "testing/my/will", QoS: 1}))
 	mqttExpect(t, conn,
 		pkg.NewSubAck(mid, 1),
-		func(p pkg.Package) bool {
+		func(p pkg.Packet) bool {
 			if pp, ok := p.(*pkg.Publish); ok {
 				mqttSend(t, conn, pkg.PubAck(pp.ID()))
 				return pp.TopicName() == "testing/my/will" && pp.QoSLevel() == 1 && pp.IsDup() && !pp.Retain()
@@ -92,11 +92,11 @@ func TestConnect_will_retain_qos_0(t *testing.T) {
 	gotIt := make(chan bool, 1)
 	go func() {
 		c2 := mqttConnectClean(t, mqttPort)
-		mid := nextPackageID()
+		mid := nextPacketID()
 		mqttSend(t, c2, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic}))
 		mqttExpect(t, c2,
 			pkg.NewSubAck(mid, 0),
-			func(p pkg.Package) bool {
+			func(p pkg.Packet) bool {
 				pp, ok := p.(*pkg.Publish)
 				return ok && pp.TopicName() == willTopic && pp.QoSLevel() == 0 && !pp.IsDup() && pp.Retain()
 			})
@@ -110,16 +110,16 @@ func TestConnect_will_retain_qos_0(t *testing.T) {
 
 	// check that retained will still exists
 	c1 = mqttConnectClean(t, mqttPort)
-	mid := nextPackageID()
+	mid := nextPacketID()
 	mqttSend(t, c1, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic}))
 	mqttExpect(t, c1,
 		pkg.NewSubAck(mid, 0),
-		func(p pkg.Package) bool {
+		func(p pkg.Packet) bool {
 			pp, ok := p.(*pkg.Publish)
 			return ok && pp.TopicName() == willTopic && pp.QoSLevel() == 0 && !pp.IsDup() && pp.Retain()
 		})
 
-	// drop the retained package
+	// drop the retained packet
 	mqttSend(t, c1, pkg.NewPublish2(0, willTopic, []byte{}, 0, false, true))
 	mqttDisconnect(t, c1)
 }
@@ -139,12 +139,12 @@ func TestConnect_will_retain_qos_1(t *testing.T) {
 	_ = conn.Close()
 
 	conn = mqttConnectClean(t, mqttPort)
-	mid := nextPackageID()
+	mid := nextPacketID()
 	mqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
 	var ackID uint16
 	mqttExpect(t, conn,
 		pkg.NewSubAck(mid, 1),
-		func(p pkg.Package) bool {
+		func(p pkg.Packet) bool {
 			if pp, ok := p.(*pkg.Publish); ok {
 				ackID = pp.ID()
 				return pp.TopicName() == willTopic && bytes.Equal(pp.Payload(), willPayload) && pp.QoSLevel() == 1 && !pp.IsDup() && pp.Retain()
@@ -155,11 +155,11 @@ func TestConnect_will_retain_qos_1(t *testing.T) {
 	mqttDisconnect(t, conn)
 
 	conn = mqttConnectClean(t, mqttPort)
-	mid = nextPackageID()
+	mid = nextPacketID()
 	mqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
 	mqttExpect(t, conn,
 		pkg.NewSubAck(mid, 1),
-		func(p pkg.Package) bool {
+		func(p pkg.Packet) bool {
 			if pp, ok := p.(*pkg.Publish); ok {
 				ackID = pp.ID()
 				return pp.TopicName() == willTopic && bytes.Equal(pp.Payload(), willPayload) && pp.QoSLevel() == 1 && !pp.IsDup() && pp.Retain()
@@ -168,7 +168,7 @@ func TestConnect_will_retain_qos_1(t *testing.T) {
 		})
 	mqttSend(t, conn, pkg.PubAck(ackID))
 
-	// drop the retained package
+	// drop the retained packet
 	mqttSend(t, conn, pkg.NewPublish2(0, willTopic, []byte{}, 1, false, true))
 	mqttDisconnect(t, conn)
 }
@@ -188,12 +188,12 @@ func TestConnect_will_retain_qos_1_restart(t *testing.T) {
 	_ = conn.Close()
 
 	conn = mqttConnectClean(t, mqttPort)
-	mid := nextPackageID()
+	mid := nextPacketID()
 	mqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
 	var ackID uint16
 	mqttExpect(t, conn,
 		pkg.NewSubAck(mid, 1),
-		func(p pkg.Package) bool {
+		func(p pkg.Packet) bool {
 			if pp, ok := p.(*pkg.Publish); ok {
 				ackID = pp.ID()
 				return pp.TopicName() == willTopic && bytes.Equal(pp.Payload(), willPayload) && pp.QoSLevel() == 1 && !pp.IsDup() && pp.Retain()
@@ -206,11 +206,11 @@ func TestConnect_will_retain_qos_1_restart(t *testing.T) {
 	RestartBridge(t, mqttServer)
 
 	conn = mqttConnectClean(t, mqttPort)
-	mid = nextPackageID()
+	mid = nextPacketID()
 	mqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
 	mqttExpect(t, conn,
 		pkg.NewSubAck(mid, 1),
-		func(p pkg.Package) bool {
+		func(p pkg.Packet) bool {
 			if pp, ok := p.(*pkg.Publish); ok {
 				ackID = pp.ID()
 				return pp.TopicName() == willTopic && bytes.Equal(pp.Payload(), willPayload) && pp.QoSLevel() == 1 && !pp.IsDup() && pp.Retain()
@@ -219,7 +219,7 @@ func TestConnect_will_retain_qos_1_restart(t *testing.T) {
 		})
 	mqttSend(t, conn, pkg.PubAck(ackID))
 
-	// drop the retained package
+	// drop the retained packet
 	mqttSend(t, conn, pkg.NewPublish2(0, willTopic, []byte{}, 1, false, true))
 	mqttDisconnect(t, conn)
 }
@@ -244,12 +244,12 @@ func TestConnect_will_qos_1_restart(t *testing.T) {
 	RestartBridge(t, mqttServer)
 
 	conn = mqttConnectClean(t, mqttPort)
-	mid := nextPackageID()
+	mid := nextPacketID()
 	mqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
 	var ackID uint16
 	mqttExpect(t, conn,
 		pkg.NewSubAck(mid, 1),
-		func(p pkg.Package) bool {
+		func(p pkg.Packet) bool {
 			if pp, ok := p.(*pkg.Publish); ok {
 				ackID = pp.ID()
 				return pp.TopicName() == willTopic && bytes.Equal(pp.Payload(), willPayload) && pp.QoSLevel() == 1 && pp.IsDup() && !pp.Retain()
@@ -258,7 +258,7 @@ func TestConnect_will_qos_1_restart(t *testing.T) {
 		})
 	mqttSend(t, conn, pkg.PubAck(ackID))
 
-	// drop the retained package
+	// drop the retained packet
 	mqttSend(t, conn, pkg.NewPublish2(0, willTopic, []byte{}, 1, false, true))
 	mqttDisconnect(t, conn)
 }

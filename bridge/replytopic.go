@@ -47,7 +47,7 @@ func (r *ReplyTopic) SessionID() string {
 	return r.s
 }
 
-func (r *ReplyTopic) PackageID() uint16 {
+func (r *ReplyTopic) PacketID() uint16 {
 	return r.p
 }
 

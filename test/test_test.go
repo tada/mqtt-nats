@@ -103,7 +103,7 @@ func assertMessageReceived(t *testing.T, c <-chan bool) {
 	select {
 	case <-c:
 	case <-time.After(100 * time.Millisecond):
-		t.Fatalf(`expected package did not arrive`)
+		t.Fatalf(`expected packet did not arrive`)
 	}
 }
 
@@ -111,7 +111,7 @@ func assertTimeout(t *testing.T, c <-chan bool) {
 	t.Helper()
 	select {
 	case <-c:
-		t.Fatalf(`unexpected package arrived`)
+		t.Fatalf(`unexpected packet arrived`)
 	case <-time.After(10 * time.Millisecond):
 	}
 }

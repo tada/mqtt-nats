@@ -17,7 +17,7 @@ type Topic struct {
 	QoS byte
 }
 
-// Subscribe is the MQTT subscribe package
+// Subscribe is the MQTT subscribe packet
 type Subscribe struct {
 	id     uint16
 	topics []Topic
@@ -25,19 +25,19 @@ type Subscribe struct {
 
 const fixedSubscribeFlags = 2
 
-// NewSubscribe creates a new MQTT subscribe package
+// NewSubscribe creates a new MQTT subscribe packet
 func NewSubscribe(id uint16, topics ...Topic) *Subscribe {
 	return &Subscribe{id: id, topics: topics}
 }
 
-// ParseSubscribe parses the subscribe package from the given reader.
-func ParseSubscribe(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
+// ParseSubscribe parses the subscribe packet from the given reader.
+func ParseSubscribe(r *mqtt.Reader, b byte, pkLen int) (Packet, error) {
 	if (b & 0xf) != fixedSubscribeFlags {
 		return nil, errors.New("malformed subscribe header")
 	}
 
 	var err error
-	if r, err = r.ReadPackage(pkLen); err != nil {
+	if r, err = r.ReadPacket(pkLen); err != nil {
 		return nil, err
 	}
 
@@ -62,13 +62,13 @@ func ParseSubscribe(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
 	return sp, nil
 }
 
-// ID returns the MQTT Package Identifier
+// ID returns the MQTT Packet Identifier
 func (s *Subscribe) ID() uint16 {
 	return s.id
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (s *Subscribe) Equals(p Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (s *Subscribe) Equals(p Packet) bool {
 	if os, ok := p.(*Subscribe); ok && s.id == os.id && len(s.topics) == len(os.topics) {
 		for i := range s.topics {
 			if s.topics[i] != os.topics[i] {
@@ -80,7 +80,7 @@ func (s *Subscribe) Equals(p Package) bool {
 	return false
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (s *Subscribe) String() string {
 	bs := bytes.NewBufferString("SUBSCRIBE (m")
 	bs.WriteString(strconv.Itoa(int(s.ID())))
@@ -115,7 +115,7 @@ func (s *Subscribe) Topics() []Topic {
 	return s.topics
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (s *Subscribe) Write(w *mqtt.Writer) {
 	pkLen := 2 // id
 	for i := range s.topics {
@@ -131,21 +131,21 @@ func (s *Subscribe) Write(w *mqtt.Writer) {
 	}
 }
 
-// SubAck is the MQTT SUBACK package sent in response to a SUBSCRIBE
+// SubAck is the MQTT SUBACK packet sent in response to a SUBSCRIBE
 type SubAck struct {
 	id           uint16
 	topicReturns []byte
 }
 
-// NewSubAck creates an SUBACK package
+// NewSubAck creates an SUBACK packet
 func NewSubAck(id uint16, topicReturns ...byte) *SubAck {
 	return &SubAck{id: id, topicReturns: topicReturns}
 }
 
-// ParseSubAck parses a SUBACK package
-func ParseSubAck(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
+// ParseSubAck parses a SUBACK packet
+func ParseSubAck(r *mqtt.Reader, b byte, pkLen int) (Packet, error) {
 	var err error
-	if r, err = r.ReadPackage(pkLen); err != nil {
+	if r, err = r.ReadPacket(pkLen); err != nil {
 		return nil, err
 	}
 	s := &SubAck{}
@@ -158,18 +158,18 @@ func ParseSubAck(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
 	return s, nil
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (s *SubAck) Equals(p Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (s *SubAck) Equals(p Packet) bool {
 	os, ok := p.(*SubAck)
 	return ok && s.id == os.id && bytes.Equal(s.topicReturns, os.topicReturns)
 }
 
-// ID returns the package ID
+// ID returns the packet ID
 func (s *SubAck) ID() uint16 {
 	return s.id
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (s *SubAck) String() string {
 	bs := bytes.NewBufferString("SUBACK (m")
 	bs.WriteString(strconv.Itoa(int(s.id)))
@@ -197,7 +197,7 @@ func (s *SubAck) TopicReturns() []byte {
 	return s.topicReturns
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (s *SubAck) Write(w *mqtt.Writer) {
 	w.WriteU8(TpSubAck)
 	w.WriteVarInt(2 + len(s.topicReturns))

@@ -12,7 +12,7 @@ import (
 // natsPub represents a message which originated from this server (such as a client will) that has been
 // published to NATS using some given credentials and now awaits a reply.
 type natsPub struct {
-	// pp is the package that was published
+	// pp is the packet that was published
 	pp *pkg.Publish
 
 	// creds are the client credentials for the publication

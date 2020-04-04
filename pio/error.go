@@ -1,6 +1,6 @@
 package pio
 
-// An Error is used as the argument to a panic by functions in this package that encounter an error
+// An Error is used as the argument to a panic by functions in this packet that encounter an error
 type Error struct {
 	// Cause is the original error
 	Cause error

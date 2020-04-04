@@ -14,26 +14,26 @@ import (
 )
 
 const (
-	// StateInfant is set when the client is created and awaits a Connect package
+	// StateInfant is set when the client is created and awaits a Connect packet
 	StateInfant = byte(iota)
 
-	// StateConnected is set once a succesfull connection has been established
+	// StateConnected is set once a successful connection has been established
 	StateConnected
 
-	// StateDisconnected is set when a disconnect package arrives or when a non recoverable error occurs.
+	// StateDisconnected is set when a disconnect packet arrives or when a non recoverable error occurs.
 	StateDisconnected
 )
 
 // A Client represents a connection from a client.
 type Client interface {
 	// Serve starts the read and write loops and then waits for them to finish which
-	// normally happens after the receipt of a disconnect package
+	// normally happens after the receipt of a disconnect packet
 	Serve()
 
 	// State returns the current client state
 	State() byte
 
-	// PublishResponse publishes a package to the client in response to a subscription
+	// PublishResponse publishes a packet to the client in response to a subscription
 	PublishResponse(qos byte, pp *pkg.Publish)
 
 	// SetDisconnected will end the read and write loop and eventually cause Serve() to end.
@@ -46,10 +46,10 @@ type client struct {
 	mqttConn       net.Conn
 	natsConn       *nats.Conn
 	session        Session
-	connectPackage *pkg.Connect
+	connectPacket  *pkg.Connect
 	err            error
 	natsSubs       map[string]*nats.Subscription
-	writeQueue     chan pkg.Package
+	writeQueue     chan pkg.Packet
 	stLock         sync.RWMutex
 	subLock        sync.Mutex
 	workers        sync.WaitGroup
@@ -68,7 +68,7 @@ func NewClient(s Server, log logger.Logger, conn net.Conn) Client {
 		mqttConn:   conn,
 		natsSubs:   make(map[string]*nats.Subscription),
 		st:         StateInfant,
-		writeQueue: make(chan pkg.Package, writeQueueSize)}
+		writeQueue: make(chan pkg.Packet, writeQueueSize)}
 }
 
 func (c *client) Serve() {
@@ -85,7 +85,7 @@ func (c *client) Serve() {
 	go c.writeLoop()
 	c.workers.Wait()
 
-	cp := c.connectPackage
+	cp := c.connectPacket
 	if c.err != nil {
 		c.Error(c.err)
 	}
@@ -103,7 +103,7 @@ func (c *client) Serve() {
 
 // String returns a text suitable for logging of client messages.
 func (c *client) String() string {
-	if cp := c.connectPackage; cp != nil {
+	if cp := c.connectPacket; cp != nil {
 		return "Client " + cp.ClientID()
 	}
 	return "Client (not connected)"
@@ -133,7 +133,7 @@ func (c *client) SetDisconnected(err error) {
 	c.stLock.Unlock()
 
 	if doit {
-		if cp := c.connectPackage; cp != nil && cp.HasWill() {
+		if cp := c.connectPacket; cp != nil && cp.HasWill() {
 			err := c.server.PublishWill(cp.Will(), cp.Credentials())
 			if err != nil {
 				c.Error(err)
@@ -141,7 +141,7 @@ func (c *client) SetDisconnected(err error) {
 				c.Debug("will published to", cp.Will().Topic)
 			}
 		}
-		// This package will not be sent but it will terminate the write loop once everything else
+		// This packet will not be sent but it will terminate the write loop once everything else
 		// has been flushed
 		c.writeQueue <- pkg.DisconnectSingleton
 
@@ -191,7 +191,7 @@ func (c *client) readLoop() {
 	var err error
 	var maxWait time.Duration
 
-readNextPackage:
+readNextPacket:
 	for st := c.State(); st != StateDisconnected && err == nil; st = c.State() {
 		var (
 			b  byte
@@ -202,7 +202,7 @@ readNextPackage:
 			_ = c.mqttConn.SetReadDeadline(time.Now().Add(maxWait))
 		}
 
-		// Read package type and flags
+		// Read packet type and flags
 		if b, err = r.ReadByte(); err != nil {
 			break
 		}
@@ -211,29 +211,29 @@ readNextPackage:
 		switch st {
 		case StateConnected:
 			if pkgType == pkg.TpConnect {
-				err = errors.New("second connect package")
-				break readNextPackage
+				err = errors.New("second connect packet")
+				break readNextPacket
 			}
 		case StateInfant:
 			if pkgType != pkg.TpConnect {
 				err = errors.New("not connected")
-				break readNextPackage
+				break readNextPacket
 			}
 		}
 
-		// Read package length
+		// Read packet length
 		if rl, err = r.ReadVarInt(); err != nil {
 			break
 		}
 
-		var p pkg.Package
+		var p pkg.Packet
 		switch pkgType {
 		case pkg.TpDisconnect:
 			// Normal disconnect
 			// Discard will
 			c.Debug("received", pkg.DisconnectSingleton)
-			c.connectPackage.DeleteWill()
-			break readNextPackage
+			c.connectPacket.DeleteWill()
+			break readNextPacket
 		case pkg.TpPing:
 			pr := pkg.PingRequestSingleton
 			c.Debug("received", pr)
@@ -260,7 +260,7 @@ readNextPackage:
 			if p, err = pkg.ParsePubAck(r, b, rl); err == nil {
 				c.Debug("received", p)
 				c.session.ClientAckReceived(p.ID(), c.natsConn)
-				c.server.ReleasePackageID(p.ID())
+				c.server.ReleasePacketID(p.ID())
 			}
 		case pkg.TpPubRec:
 			if p, err = pkg.ParsePubRec(r, b, rl); err == nil {
@@ -291,7 +291,7 @@ readNextPackage:
 				c.natsUnsubscribe(p.(*pkg.Unsubscribe))
 			}
 		default:
-			c.Debug("received unknown package type", (b&pkg.TpMask)>>4)
+			c.Debug("received unknown packet type", (b&pkg.TpMask)>>4)
 		}
 	}
 	c.SetDisconnected(err)
@@ -299,7 +299,7 @@ readNextPackage:
 
 func (c *client) handleConnect(cp *pkg.Connect) (time.Duration, error) {
 	var err error
-	c.connectPackage = cp
+	c.connectPacket = cp
 	c.natsConn, err = c.server.NatsConn(cp.Credentials())
 	if err != nil {
 		// TODO: Different error codes depending on error from NATS
@@ -327,7 +327,7 @@ func (c *client) handleConnect(cp *pkg.Connect) (time.Duration, error) {
 	}
 	var maxWait time.Duration
 	if cp.KeepAlive() > 0 {
-		// Max wait between control packages is 1.5 times the keep alive value
+		// Max wait between control packets is 1.5 times the keep alive value
 		maxWait = (cp.KeepAlive() * 3) / 2
 	}
 	c.setState(StateConnected)
@@ -335,7 +335,7 @@ func (c *client) handleConnect(cp *pkg.Connect) (time.Duration, error) {
 	return maxWait, nil
 }
 
-func (c *client) queueForWrite(p pkg.Package) {
+func (c *client) queueForWrite(p pkg.Packet) {
 	if c.State() == StateConnected {
 		c.writeQueue <- p
 	}
@@ -344,13 +344,13 @@ func (c *client) queueForWrite(p pkg.Package) {
 func (c *client) writeLoop() {
 	defer c.workers.Done()
 
-	bulk := make([]pkg.Package, writeQueueSize)
+	bulk := make([]pkg.Packet, writeQueueSize)
 
 	// writer's buffer is reused for each bulk operation
 	w := mqtt.NewWriter()
 
-	// Each iteration of this loop with pick max writeQueueSize packages from the writeQueue
-	// and then write those packages on mqtt.Writer (a bytes.Buffer extension). The resulting bytes
+	// Each iteration of this loop with pick max writeQueueSize packets from the writeQueue
+	// and then write those packets on mqtt.Writer (a bytes.Buffer extension). The resulting bytes
 	// are then written to the connection using one single write on the connection.
 	for connected := true; connected; {
 		bulk[0] = <-c.writeQueue

@@ -23,7 +23,7 @@ type Options struct {
 	// Port is the MQTT port
 	Port int
 
-	// RepeatRate is the delay in milliseconds between publishing packages that originated in this server
+	// RepeatRate is the delay in milliseconds between publishing packets that originated in this server
 	// that have QoS > 0 but hasn't been acknowledged.
 	RepeatRate int
 

@@ -62,7 +62,7 @@ const (
 	RtNotAuthorized
 )
 
-// Will is the optional client will in the MQTT connect package
+// Will is the optional client will in the MQTT connect packet
 type Will struct {
 	Topic   string
 	Message []byte
@@ -75,7 +75,7 @@ func (w *Will) Equals(ow *Will) bool {
 	return w.Retain == ow.Retain && w.QoS == ow.QoS && w.Topic == ow.Topic && bytes.Equal(w.Message, ow.Message)
 }
 
-// Connect is the MQTT connect package
+// Connect is the MQTT connect packet
 type Connect struct {
 	clientID    string
 	creds       *Credentials
@@ -85,7 +85,7 @@ type Connect struct {
 	flags       byte
 }
 
-// NewConnect creates a new MQTT connect package
+// NewConnect creates a new MQTT connect packet
 func NewConnect(clientID string, cleanSession bool, keepAlive uint16, will *Will, creds *Credentials) *Connect {
 	flags := byte(0)
 	if cleanSession {
@@ -115,10 +115,10 @@ func NewConnect(clientID string, cleanSession bool, keepAlive uint16, will *Will
 		will:        will}
 }
 
-// ParseConnect parses the connect package from the given reader.
-func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
+// ParseConnect parses the connect packet from the given reader.
+func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	var err error
-	if r, err = r.ReadPackage(pkLen); err != nil {
+	if r, err = r.ReadPacket(pkLen); err != nil {
 		return nil, err
 	}
 
@@ -128,7 +128,7 @@ func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 		return nil, err
 	}
 	if proto != protoName {
-		return nil, fmt.Errorf(`expected connect package with protocol name "MQTT", got "%s"`, proto)
+		return nil, fmt.Errorf(`expected connect packet with protocol name "MQTT", got "%s"`, proto)
 	}
 
 	c := &Connect{}
@@ -187,13 +187,13 @@ func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	return c, nil
 }
 
-// ID always returns 0 for a connection package
+// ID always returns 0 for a connection packet
 func (c *Connect) ID() uint16 {
 	return 0
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (c *Connect) Equals(p Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (c *Connect) Equals(p Packet) bool {
 	oc, ok := p.(*Connect)
 	return ok &&
 		c.keepAlive == oc.keepAlive &&
@@ -209,7 +209,7 @@ func (c *Connect) SetClientLevel(cl byte) {
 	c.clientLevel = cl
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (c *Connect) Write(w *mqtt.Writer) {
 	pkLen := 2 + len(protoName) +
 		1 + // clientLevel
@@ -282,7 +282,7 @@ func (c *Connect) Credentials() *Credentials {
 	return c.creds
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (c *Connect) String() string {
 	return "CONNECT"
 }
@@ -298,14 +298,14 @@ func (c *Connect) DeleteWill() {
 	c.will = nil
 }
 
-// AckConnect is the MQTT CONNACK package sent in response to a CONNECT
+// AckConnect is the MQTT CONNACK packet sent in response to a CONNECT
 type AckConnect struct {
 	flags      byte
 	returnCode byte
 }
 
-// NewAckConnect creates an CONNACK package
-func NewAckConnect(sessionPresent bool, returnCode ReturnCode) Package {
+// NewAckConnect creates an CONNACK packet
+func NewAckConnect(sessionPresent bool, returnCode ReturnCode) Packet {
 	flags := byte(0x00)
 	if sessionPresent {
 		flags |= 0x01
@@ -313,8 +313,8 @@ func NewAckConnect(sessionPresent bool, returnCode ReturnCode) Package {
 	return &AckConnect{flags: flags, returnCode: byte(returnCode)}
 }
 
-// ParseAckConnect parses a CONNACK package
-func ParseAckConnect(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
+// ParseAckConnect parses a CONNACK packet
+func ParseAckConnect(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	var err error
 	if pkLen != 2 {
 		return nil, errors.New("malformed CONNACK")
@@ -327,23 +327,23 @@ func ParseAckConnect(r *mqtt.Reader, _ byte, pkLen int) (Package, error) {
 	return &AckConnect{flags: bs[0], returnCode: bs[1]}, nil
 }
 
-// ID always returns 0 for a CONNACK package
+// ID always returns 0 for a CONNACK packet
 func (a *AckConnect) ID() uint16 {
 	return 0
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (a *AckConnect) Equals(p Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (a *AckConnect) Equals(p Packet) bool {
 	ac, ok := p.(*AckConnect)
 	return ok && *a == *ac
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (a *AckConnect) String() string {
 	return fmt.Sprintf("CONNACK (s%d, rt%d)", a.flags, a.returnCode)
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (a *AckConnect) Write(w *mqtt.Writer) {
 	w.WriteU8(TpConnAck)
 	w.WriteU8(2)
@@ -351,28 +351,28 @@ func (a *AckConnect) Write(w *mqtt.Writer) {
 	w.WriteU8(a.returnCode)
 }
 
-// The Disconnect type represents the MQTT DISCONNECT package
+// The Disconnect type represents the MQTT DISCONNECT packet
 type Disconnect int
 
 // DisconnectSingleton is the one and only instance of the Disconnect type
 const DisconnectSingleton = Disconnect(0)
 
-// ID always returns 0 for a DISCONNECT package
+// ID always returns 0 for a DISCONNECT packet
 func (a Disconnect) ID() uint16 {
 	return 0
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (Disconnect) Equals(p Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (Disconnect) Equals(p Packet) bool {
 	return p == DisconnectSingleton
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (Disconnect) String() string {
 	return "DISCONNECT"
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (Disconnect) Write(w *mqtt.Writer) {
 	w.WriteU8(TpDisconnect)
 	w.WriteU8(0)

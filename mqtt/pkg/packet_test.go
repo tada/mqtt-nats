@@ -8,7 +8,7 @@ import (
 	"github.com/tada/mqtt-nats/mqtt"
 )
 
-func writeReadAndCompare(t *testing.T, p Package, parser func(*mqtt.Reader, byte, int) (Package, error), ex string) {
+func writeReadAndCompare(t *testing.T, p Packet, parser func(*mqtt.Reader, byte, int) (Packet, error), ex string) {
 	w := &mqtt.Writer{}
 	p.Write(w)
 

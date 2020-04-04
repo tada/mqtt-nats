@@ -1,4 +1,4 @@
-// Package pkg contains the MQTT package structures
+// Package pkg contains the MQTT packet structures
 package pkg
 
 import "github.com/tada/mqtt-nats/mqtt"
@@ -50,14 +50,14 @@ const (
 	TpMask = 0xf0
 )
 
-// The Package interface is implemented by all MQTT package types
-type Package interface {
-	// ID returns the package ID or 0 if not applicable
+// The Packet interface is implemented by all MQTT packet types
+type Packet interface {
+	// ID returns the packet ID or 0 if not applicable
 	ID() uint16
 
-	// Equals returns true if this package is equal to the given package, false if not
-	Equals(other Package) bool
+	// Equals returns true if this packet is equal to the given packet, false if not
+	Equals(other Packet) bool
 
-	// Write writes the MQTT bits of this package on the given Writer
+	// Write writes the MQTT bits of this packet on the given Writer
 	Write(w *mqtt.Writer)
 }

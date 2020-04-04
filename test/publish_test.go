@@ -14,7 +14,7 @@ func TestPublishSubscribe(t *testing.T) {
 	pp := pkg.SimplePublish(topic, []byte("payload"))
 	gotIt := make(chan bool, 1)
 	c1 := mqttConnectClean(t, mqttPort)
-	mid := nextPackageID()
+	mid := nextPacketID()
 	mqttSend(t, c1, pkg.NewSubscribe(mid, pkg.Topic{Name: topic}))
 	mqttExpect(t, c1, pkg.NewSubAck(mid, 0))
 	go func() {
@@ -31,12 +31,12 @@ func TestPublishSubscribe(t *testing.T) {
 
 func TestPublishSubscribe_qos_1(t *testing.T) {
 	topic := "testing/some/topic"
-	mid := nextPackageID()
+	mid := nextPacketID()
 	pp := pkg.NewPublish2(mid, topic, []byte("payload"), 1, false, false)
 	c1 := mqttConnectClean(t, mqttPort)
 	gotIt := make(chan bool, 1)
 	go func() {
-		sid := nextPackageID()
+		sid := nextPacketID()
 		mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 1}))
 		mqttExpect(t, c1, pkg.NewSubAck(sid, 1), pp)
 		mqttSend(t, c1, pkg.PubAck(mid))
@@ -53,12 +53,12 @@ func TestPublishSubscribe_qos_1(t *testing.T) {
 
 func TestPublishSubscribe_qos_2(t *testing.T) {
 	topic := "testing/some/topic"
-	mid := nextPackageID()
+	mid := nextPacketID()
 	pp := pkg.NewPublish2(mid, topic, []byte("payload"), 1, false, false)
 	c1 := mqttConnectClean(t, mqttPort)
 	gotIt := make(chan bool, 1)
 	go func() {
-		sid := nextPackageID()
+		sid := nextPacketID()
 		mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 2}))
 		mqttExpect(t, c1, pkg.NewSubAck(sid, 1), pp)
 		mqttSend(t, c1, pkg.PubAck(mid))
@@ -75,7 +75,7 @@ func TestPublishSubscribe_qos_2(t *testing.T) {
 
 func TestPublishSubscribe_qos_1_restart(t *testing.T) {
 	topic := "testing/some/topic"
-	mid := nextPackageID()
+	mid := nextPacketID()
 	pp := pkg.NewPublish2(mid, topic, []byte("payload"), 1, false, false)
 
 	c1ID := nextClientID()
@@ -85,7 +85,7 @@ func TestPublishSubscribe_qos_1_restart(t *testing.T) {
 		mqttSend(t, c1, pkg.NewConnect(c1ID, false, 1, nil, nil))
 		mqttExpect(t, c1, pkg.NewAckConnect(false, 0))
 
-		sid := nextPackageID()
+		sid := nextPacketID()
 		mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 1}))
 		mqttExpect(t, c1, pkg.NewSubAck(sid, 1))
 		gotIt <- true
@@ -149,7 +149,7 @@ func TestNatsPublishMqttSubscribe(t *testing.T) {
 	pp := pkg.SimplePublish(topic, pl)
 
 	c1 := mqttConnectClean(t, mqttPort)
-	sid := nextPackageID()
+	sid := nextPacketID()
 	mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic}))
 	mqttExpect(t, c1, pkg.NewSubAck(sid, 0))
 
@@ -174,13 +174,13 @@ func TestNatsPublishMqttSubscribe_qos_1(t *testing.T) {
 	pl := []byte("payload")
 
 	c1 := mqttConnectClean(t, mqttPort)
-	sid := nextPackageID()
+	sid := nextPacketID()
 	mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 1}))
 	mqttExpect(t, c1, pkg.NewSubAck(sid, 1))
 
 	gotIt := make(chan bool, 1)
 	go func() {
-		mqttExpect(t, c1, func(p pkg.Package) bool {
+		mqttExpect(t, c1, func(p pkg.Packet) bool {
 			if pp, ok := p.(*pkg.Publish); ok {
 				mqttSend(t, c1, pkg.PubAck(pp.ID()))
 				return pp.TopicName() == topic && bytes.Equal(pp.Payload(), pl) && pp.QoSLevel() == 1
@@ -204,13 +204,13 @@ func TestUnubscribe(t *testing.T) {
 	pp := pkg.SimplePublish(topic, []byte("payload"))
 	gotIt := make(chan bool, 1)
 	c1 := mqttConnectClean(t, mqttPort)
-	mid := nextPackageID()
+	mid := nextPacketID()
 	mqttSend(t, c1, pkg.NewSubscribe(mid, pkg.Topic{Name: topic}))
 	mqttExpect(t, c1, pkg.NewSubAck(mid, 0))
 	go func() {
 		mqttExpect(t, c1, pp)
 
-		uid := nextPackageID()
+		uid := nextPacketID()
 		mqttSend(t, c1, pkg.NewUnsubscribe(uid, topic))
 		mqttExpect(t, c1, pkg.UnsubAck(uid))
 		gotIt <- true
@@ -234,13 +234,13 @@ func TestUnubscribe(t *testing.T) {
 func TestPublish_qos_2(t *testing.T) {
 	conn := mqttConnectClean(t, mqttPort)
 	mqttSend(t, conn, pkg.NewPublish2(
-		nextPackageID(), "testing/some/topic", []byte("payload"), 2, false, false))
+		nextPacketID(), "testing/some/topic", []byte("payload"), 2, false, false))
 	mqttExpectConnReset(t, conn)
 }
 
 func TestPublish_qos_3(t *testing.T) {
 	conn := mqttConnectClean(t, mqttPort)
 	mqttSend(t, conn, pkg.NewPublish2(
-		nextPackageID(), "testing/some/topic", []byte("payload"), 3, false, false))
+		nextPacketID(), "testing/some/topic", []byte("payload"), 3, false, false))
 	mqttExpectConnReset(t, conn)
 }

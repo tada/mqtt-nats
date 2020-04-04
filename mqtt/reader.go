@@ -100,7 +100,7 @@ func (r *Reader) ReadRemainingBytes() ([]byte, error) {
 	return r.ReadExact(r.Len())
 }
 
-func (r *Reader) ReadPackage(pkLen int) (*Reader, error) {
+func (r *Reader) ReadPacket(pkLen int) (*Reader, error) {
 	// Do a bulk read and switch to read from that bulk
 	var rdr *Reader
 	pk, err := r.ReadExact(pkLen)

@@ -143,7 +143,7 @@ func (r *retained) matchingMessages(tps []pkg.Topic) ([]*pkg.Publish, []byte) {
 		dqs[i] = tp.QoS
 	}
 
-	// For each subscription topic, extract matching packages and desired QoS
+	// For each subscription topic, extract matching packets and desired QoS
 	pps := make([]*pkg.Publish, 0)
 	qs := make([]byte, 0)
 

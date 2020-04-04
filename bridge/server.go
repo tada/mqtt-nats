@@ -53,20 +53,20 @@ type Bridge interface {
 type server struct {
 	logger.Logger
 	pkg.IDManager
-	opts             *Options
-	session          Session
-	retainedPackages *retained
-	sm               SessionManager
-	natsConn         *nats.Conn // servers NATS connection
-	clients          []Client
-	clientWG         sync.WaitGroup
-	clientLock       sync.RWMutex
-	trackAckLock     sync.RWMutex
-	pubAcks          map[uint16]*natsPub // will be republished until ack arrives from nats
-	pubAckTimeout    time.Duration
-	pubAckTimer      *time.Timer
-	done             chan bool
-	signals          chan os.Signal
+	opts            *Options
+	session         Session
+	retainedPackets *retained
+	sm              SessionManager
+	natsConn        *nats.Conn // servers NATS connection
+	clients         []Client
+	clientWG        sync.WaitGroup
+	clientLock      sync.RWMutex
+	trackAckLock    sync.RWMutex
+	pubAcks         map[uint16]*natsPub // will be republished until ack arrives from nats
+	pubAckTimeout   time.Duration
+	pubAckTimer     *time.Timer
+	done            chan bool
+	signals         chan os.Signal
 }
 
 func New(opts *Options, logger logger.Logger) (Bridge, error) {
@@ -74,7 +74,7 @@ func New(opts *Options, logger logger.Logger) (Bridge, error) {
 		Logger:    logger,
 		IDManager: pkg.NewIDManager(),
 		opts:      opts,
-		retainedPackages: &retained{
+		retainedPackets: &retained{
 			msgs: make(map[string]*pkg.Publish),
 		},
 		pubAckTimeout: time.Duration(opts.RepeatRate) * time.Millisecond,
@@ -246,7 +246,7 @@ func (s *server) handleRetainedRequest(m *nats.Msg) {
 }
 
 func (s *server) MessagesMatchingRetainRequest(m *nats.Msg) ([]*pkg.Publish, []byte) {
-	return s.retainedPackages.messagesMatchingRetainRequest(m)
+	return s.retainedPackets.messagesMatchingRetainRequest(m)
 }
 
 func (s *server) natsOptions(creds *pkg.Credentials) (*nats.Options, error) {
@@ -272,7 +272,7 @@ func (s *server) PublishWill(will *pkg.Will, creds *pkg.Credentials) error {
 	id := uint16(0)
 	qos := will.QoS
 	if qos > 0 {
-		id = s.NextFreePackageID()
+		id = s.NextFreePacketID()
 	}
 	pp := pkg.NewPublish2(id, will.Topic, will.Message, qos, false, will.Retain)
 	nc, err := s.NatsConn(creds)
@@ -282,7 +282,7 @@ func (s *server) PublishWill(will *pkg.Will, creds *pkg.Credentials) error {
 		if qos == 0 {
 			err = nc.Publish(natsSubj, will.Message)
 		} else {
-			// use client id and package id to form a reply subject
+			// use client id and packet id to form a reply subject
 			replyTo := NewReplyTopic(s.session, pp).String()
 			err = nc.PublishRequest(natsSubj, replyTo, will.Message)
 		}
@@ -406,9 +406,9 @@ func (s *server) MarshalToJSON(w io.Writer) {
 	s.IDManager.MarshalToJSON(w)
 	pio.WriteString(`,"sm":`, w)
 	s.sm.MarshalToJSON(w)
-	if !s.retainedPackages.Empty() {
+	if !s.retainedPackets.Empty() {
 		pio.WriteString(`,"retained":`, w)
-		s.retainedPackages.MarshalToJSON(w)
+		s.retainedPackets.MarshalToJSON(w)
 	}
 	trk := s.awaitsAckSnapshot()
 	if len(trk) > 0 {
@@ -443,7 +443,7 @@ func (s *server) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 		case "sm":
 			jsonstream.AssertConsumer(js, s.sm)
 		case "retained":
-			jsonstream.AssertConsumer(js, s.retainedPackages)
+			jsonstream.AssertConsumer(js, s.retainedPackets)
 		case "pubacks":
 			jsonstream.AssertDelim(js, '[')
 			ackTracks = make(map[uint16]*natsPub)
@@ -467,7 +467,7 @@ func (s *server) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 
 func (s *server) HandleRetain(pp *pkg.Publish) *pkg.Publish {
 	if pp.Retain() {
-		rt := s.retainedPackages
+		rt := s.retainedPackets
 		if len(pp.Payload()) == 0 {
 			if rt.drop(pp.TopicName()) {
 				s.Debug("deleted retained message", pp)
@@ -481,7 +481,7 @@ func (s *server) HandleRetain(pp *pkg.Publish) *pkg.Publish {
 }
 
 func (s *server) PublishMatching(ps *pkg.Subscribe, c Client) {
-	s.retainedPackages.publishMatching(ps, c)
+	s.retainedPackets.publishMatching(ps, c)
 }
 
 func (s *server) ServeClient(conn net.Conn) {

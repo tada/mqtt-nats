@@ -28,10 +28,10 @@ type Session interface {
 	Destroy()
 
 	// AckRequested remembers the given subscription which represents an awaited ACK
-	// for the given packageID
+	// for the given packetID
 	AckRequested(uint16, *nats.Subscription)
 
-	// AwaitsAck returns true if a subscription associated with the given package identifier
+	// AwaitsAck returns true if a subscription associated with the given packet identifier
 	// is currently waiting for an Ack.
 	AwaitsAck(uint16) bool
 
@@ -39,7 +39,7 @@ type Session interface {
 	// such an ack was pending
 	AckReceived(uint16) bool
 
-	// ClientAckRequested remembers the id of a package which has been sent to the client. The package stems from a NATS
+	// ClientAckRequested remembers the id of a packet which has been sent to the client. The packet stems from a NATS
 	// subscription with QoS level > 0 and it is now expected that the client sends an PubACK back to which can be
 	// propagated to the reply-to address.
 	ClientAckRequested(*pkg.Publish)
@@ -169,46 +169,46 @@ func (s *session) RestoreAckSubscriptions(c *client) {
 	}
 }
 
-func (s *session) AckReceived(packageID uint16) bool {
+func (s *session) AckReceived(packetID uint16) bool {
 	awaits := false
 	s.awaitsAckLock.Lock()
 	if s.awaitsAck != nil {
 		var sb *nats.Subscription
-		if sb, awaits = s.awaitsAck[packageID]; awaits {
+		if sb, awaits = s.awaitsAck[packetID]; awaits {
 			_ = sb.Unsubscribe()
-			delete(s.awaitsAck, packageID)
+			delete(s.awaitsAck, packetID)
 		}
 	}
 	s.awaitsAckLock.Unlock()
 	return awaits
 }
 
-func (s *session) AckRequested(packageID uint16, sb *nats.Subscription) {
+func (s *session) AckRequested(packetID uint16, sb *nats.Subscription) {
 	s.awaitsAckLock.Lock()
 	if s.awaitsAck == nil {
 		s.awaitsAck = make(map[uint16]*nats.Subscription)
 	}
-	s.awaitsAck[packageID] = sb
+	s.awaitsAck[packetID] = sb
 	s.awaitsAckLock.Unlock()
 }
 
-func (s *session) AwaitsAck(packageID uint16) bool {
+func (s *session) AwaitsAck(packetID uint16) bool {
 	awaits := false
 	s.awaitsAckLock.RLock()
 	if s.awaitsAck != nil {
-		_, awaits = s.awaitsAck[packageID]
+		_, awaits = s.awaitsAck[packetID]
 	}
 	s.awaitsAckLock.RUnlock()
 	return awaits
 }
 
-func (s *session) ClientAckReceived(packageID uint16, c *nats.Conn) bool {
+func (s *session) ClientAckReceived(packetID uint16, c *nats.Conn) bool {
 	var pp *pkg.Publish
 	s.awaitsAckLock.Lock()
 	if s.awaitsClientAck != nil {
 		var found bool
-		if pp, found = s.awaitsClientAck[packageID]; found {
-			delete(s.awaitsClientAck, packageID)
+		if pp, found = s.awaitsClientAck[packetID]; found {
+			delete(s.awaitsClientAck, packetID)
 		}
 	}
 	s.awaitsAckLock.Unlock()

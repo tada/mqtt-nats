@@ -23,7 +23,7 @@ func (c *client) natsPublish(pp *pkg.Publish) error {
 		// Fire and forget
 		err = c.natsConn.Publish(natsSubject, pp.Payload())
 	case 1:
-		// use client id and package id to form a reply subject
+		// use client id and packet id to form a reply subject
 		replyTo := NewReplyTopic(c.session, pp).String()
 		var sub *nats.Subscription
 		sub, err = c.natsSubscribeAck(replyTo)
@@ -46,8 +46,8 @@ func (c *client) natsSubscribeAck(topic string) (*nats.Subscription, error) {
 		mt := ParseReplyTopic(m.Subject)
 		if mt != nil {
 			if s := c.server.SessionManager().Get(mt.ClientID()); s != nil && s.ID() == mt.SessionID() {
-				s.AckReceived(mt.PackageID())
-				c.queueForWrite(pkg.PubAck(mt.PackageID()))
+				s.AckReceived(mt.PacketID())
+				c.queueForWrite(pkg.PubAck(mt.PacketID()))
 			}
 		}
 	})
@@ -117,10 +117,10 @@ func (c *client) natsResponse(desiredQoS byte, m *nats.Msg) {
 	flags := byte(0)
 	if desiredQoS > 0 && m.Reply != `` {
 		if mt := ParseReplyTopic(m.Reply); mt != nil {
-			id = mt.PackageID()
+			id = mt.PacketID()
 			flags = mt.Flags()
 		} else {
-			id = c.server.NextFreePackageID()
+			id = c.server.NextFreePacketID()
 			flags = 2 // QoS level 1
 		}
 	}

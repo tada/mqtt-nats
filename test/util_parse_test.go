@@ -9,15 +9,15 @@ import (
 	"github.com/tada/mqtt-nats/mqtt/pkg"
 )
 
-func parsePackage(t *testing.T, rdr io.Reader) pkg.Package {
+func parsePacket(t *testing.T, rdr io.Reader) pkg.Packet {
 	t.Helper()
-	// Read package type and flags
+	// Read packet type and flags
 	r := mqtt.NewReader(rdr)
 	var (
 		b   byte
 		rl  int
 		err error
-		p   pkg.Package
+		p   pkg.Packet
 	)
 	if b, err = r.ReadByte(); err != nil {
 		t.Fatal(err)
@@ -25,7 +25,7 @@ func parsePackage(t *testing.T, rdr io.Reader) pkg.Package {
 
 	pkgType := b & pkg.TpMask
 
-	// Read package length
+	// Read packet length
 	if rl, err = r.ReadVarInt(); err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func parsePackage(t *testing.T, rdr io.Reader) pkg.Package {
 			return p
 		}
 	default:
-		err = fmt.Errorf("received unknown package type %d", (b&pkg.TpMask)>>4)
+		err = fmt.Errorf("received unknown packet type %d", (b&pkg.TpMask)>>4)
 	}
 	t.Fatal(err)
 	return nil

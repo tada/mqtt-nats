@@ -9,25 +9,25 @@ import (
 	"github.com/tada/mqtt-nats/mqtt"
 )
 
-// Unsubscribe is the MQTT UNSUBSCRIBE package
+// Unsubscribe is the MQTT UNSUBSCRIBE packet
 type Unsubscribe struct {
 	id     uint16
 	topics []string
 }
 
-// NewUnsubscribe creates a new Unsubscribe package
+// NewUnsubscribe creates a new Unsubscribe packet
 func NewUnsubscribe(id uint16, topics ...string) *Unsubscribe {
 	return &Unsubscribe{id: id, topics: topics}
 }
 
-// ParseUnsubscribe parses the unsubscribe package from the given reader.
-func ParseUnsubscribe(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
+// ParseUnsubscribe parses the unsubscribe packet from the given reader.
+func ParseUnsubscribe(r *mqtt.Reader, b byte, pkLen int) (Packet, error) {
 	if (b & 0xf) != 2 {
 		return nil, errors.New("malformed unsubscribe header")
 	}
 
 	var err error
-	if r, err = r.ReadPackage(pkLen); err != nil {
+	if r, err = r.ReadPacket(pkLen); err != nil {
 		return nil, err
 	}
 
@@ -46,9 +46,9 @@ func ParseUnsubscribe(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
 	return up, nil
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (u *Unsubscribe) Write(w *mqtt.Writer) {
-	pkLen := 2 // package id
+	pkLen := 2 // packet id
 	tps := u.topics
 	for i := range tps {
 		pkLen += 2 + len(tps[i])
@@ -61,8 +61,8 @@ func (u *Unsubscribe) Write(w *mqtt.Writer) {
 	}
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (u *Unsubscribe) Equals(p Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (u *Unsubscribe) Equals(p Packet) bool {
 	if os, ok := p.(*Unsubscribe); ok && u.id == os.id && len(u.topics) == len(os.topics) {
 		for i := range u.topics {
 			if u.topics[i] != os.topics[i] {
@@ -74,12 +74,12 @@ func (u *Unsubscribe) Equals(p Package) bool {
 	return false
 }
 
-// ID returns the MQTT Package Identifier
+// ID returns the MQTT Packet Identifier
 func (u *Unsubscribe) ID() uint16 {
 	return u.id
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (u *Unsubscribe) String() string {
 	bs := bytes.NewBufferString("UNSUBSCRIBE (m")
 	bs.WriteString(strconv.Itoa(int(u.ID())))
@@ -101,11 +101,11 @@ func (u *Unsubscribe) Topics() []string {
 	return u.topics
 }
 
-// UnsubAck is the MQTT UNSUBACK package
+// UnsubAck is the MQTT UNSUBACK packet
 type UnsubAck uint16
 
-// ParseUnsubAck parses the unsubscribe package from the given reader.
-func ParseUnsubAck(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
+// ParseUnsubAck parses the unsubscribe packet from the given reader.
+func ParseUnsubAck(r *mqtt.Reader, b byte, pkLen int) (Packet, error) {
 	if pkLen != 2 {
 		return UnsubAck(0), errors.New("malformed UNSUBACK")
 	}
@@ -113,22 +113,22 @@ func ParseUnsubAck(r *mqtt.Reader, b byte, pkLen int) (Package, error) {
 	return UnsubAck(id), err
 }
 
-// ID returns the package ID
+// ID returns the packet ID
 func (u UnsubAck) ID() uint16 {
 	return uint16(u)
 }
 
-// Equals returns true if this package is equal to the given package, false if not
-func (u UnsubAck) Equals(other Package) bool {
+// Equals returns true if this packet is equal to the given packet, false if not
+func (u UnsubAck) Equals(other Packet) bool {
 	return u == other
 }
 
-// String returns a brief string representation of the package. Suitable for logging
+// String returns a brief string representation of the packet. Suitable for logging
 func (u UnsubAck) String() string {
 	return fmt.Sprintf("UNSUBACK (m%d)", int(u))
 }
 
-// Write writes the MQTT bits of this package on the given Writer
+// Write writes the MQTT bits of this packet on the given Writer
 func (u UnsubAck) Write(w *mqtt.Writer) {
 	w.WriteU8(TpUnsubAck)
 	w.WriteU8(2)
