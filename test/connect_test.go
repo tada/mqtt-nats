@@ -290,3 +290,21 @@ func TestConnect_multiple(t *testing.T) {
 	mqttSend(t, conn, pkg.NewConnect(nextClientID(), true, 1, nil, nil))
 	mqttExpectConnReset(t, conn)
 }
+
+func TestBadPacketLength(t *testing.T) {
+	conn := mqttConnectClean(t, mqttPort)
+	_, err := conn.Write([]byte{0x01, 0xff, 0xff, 0xff, 0xff})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mqttExpectConnReset(t, conn)
+}
+
+func TestBadPacketType(t *testing.T) {
+	conn := mqttConnectClean(t, mqttPort)
+	_, err := conn.Write([]byte{0xff, 0x0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mqttExpectConnReset(t, conn)
+}

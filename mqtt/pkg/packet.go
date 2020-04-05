@@ -52,9 +52,6 @@ const (
 
 // The Packet interface is implemented by all MQTT packet types
 type Packet interface {
-	// ID returns the packet ID or 0 if not applicable
-	ID() uint16
-
 	// Equals returns true if this packet is equal to the given packet, false if not
 	Equals(other Packet) bool
 

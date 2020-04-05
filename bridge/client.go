@@ -259,8 +259,9 @@ readNextPacket:
 		case pkg.TpPubAck:
 			if p, err = pkg.ParsePubAck(r, b, rl); err == nil {
 				c.Debug("received", p)
-				c.session.ClientAckReceived(p.ID(), c.natsConn)
-				c.server.ReleasePacketID(p.ID())
+				id := p.(pkg.PubAck).ID()
+				c.session.ClientAckReceived(id, c.natsConn)
+				c.server.ReleasePacketID(id)
 			}
 		case pkg.TpPubRec:
 			if p, err = pkg.ParsePubRec(r, b, rl); err == nil {

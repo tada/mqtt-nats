@@ -125,7 +125,7 @@ func (u UnsubAck) Equals(other Packet) bool {
 
 // String returns a brief string representation of the packet. Suitable for logging
 func (u UnsubAck) String() string {
-	return fmt.Sprintf("UNSUBACK (m%d)", int(u))
+	return fmt.Sprintf("UNSUBACK (m%d)", u.ID())
 }
 
 // Write writes the MQTT bits of this packet on the given Writer

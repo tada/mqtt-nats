@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/tada/mqtt-nats/mqtt"
@@ -14,17 +13,16 @@ func TestParseConnect(t *testing.T) {
 		QoS:     1,
 		Retain:  false,
 	}, &Credentials{User: "bob", Password: []byte("password")})
-	w := &mqtt.Writer{}
-	c1.Write(w)
+	writeReadAndCompare(t, c1, ParseConnect, "CONNECT (c1, k5, u1, p1, w(r0, q1, 'my/will', ... (8 bytes)))")
+}
 
-	r := mqtt.NewReader(bytes.NewReader(w.Bytes()))
-	b, _ := r.ReadByte()
-	pl, _ := r.ReadVarInt()
-	c2, err := ParseConnect(r, b, pl)
-	if err != nil {
-		t.Fatal(err)
+func TestParseConnAck(t *testing.T) {
+	writeReadAndCompare(t, NewAckConnect(false, 1), ParseAckConnect, "CONNACK (s0, rt1)")
+}
+
+func TestParseDisconnect(t *testing.T) {
+	parse := func(*mqtt.Reader, byte, int) (Packet, error) {
+		return DisconnectSingleton, nil
 	}
-	if !c1.Equals(c2) {
-		t.Fatal(c1, "!=", c2)
-	}
+	writeReadAndCompare(t, DisconnectSingleton, parse, "DISCONNECT")
 }

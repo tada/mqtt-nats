@@ -172,7 +172,7 @@ func (s *SubAck) ID() uint16 {
 // String returns a brief string representation of the packet. Suitable for logging
 func (s *SubAck) String() string {
 	bs := bytes.NewBufferString("SUBACK (m")
-	bs.WriteString(strconv.Itoa(int(s.id)))
+	bs.WriteString(strconv.Itoa(int(s.ID())))
 	bs.WriteString(", ")
 	if len(s.topicReturns) != 1 {
 		bs.WriteByte('[')

@@ -20,11 +20,6 @@ func NewReplyTopic(s Session, pp *pkg.Publish) *ReplyTopic {
 }
 
 func ParseReplyTopic(s string) *ReplyTopic {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println(r)
-		}
-	}()
 	ps := strings.Split(s, ".")
 	if len(ps) == 5 && ps[0] == "_INBOX" {
 		p, err := strconv.Atoi(ps[3])

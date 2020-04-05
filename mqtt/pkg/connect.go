@@ -1,7 +1,6 @@
 package pkg
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"time"
@@ -61,19 +60,6 @@ const (
 	// RtNotAuthorized The Client is not authorized to connect
 	RtNotAuthorized
 )
-
-// Will is the optional client will in the MQTT connect packet
-type Will struct {
-	Topic   string
-	Message []byte
-	QoS     byte
-	Retain  bool
-}
-
-// Equals returns true if this instance is equal to the given instance, false if not
-func (w *Will) Equals(ow *Will) bool {
-	return w.Retain == ow.Retain && w.QoS == ow.QoS && w.Topic == ow.Topic && bytes.Equal(w.Message, ow.Message)
-}
 
 // Connect is the MQTT connect packet
 type Connect struct {
@@ -187,11 +173,6 @@ func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	return c, nil
 }
 
-// ID always returns 0 for a connection packet
-func (c *Connect) ID() uint16 {
-	return 0
-}
-
 // Equals returns true if this packet is equal to the given packet, false if not
 func (c *Connect) Equals(p Packet) bool {
 	oc, ok := p.(*Connect)
@@ -247,6 +228,20 @@ func (c *Connect) Write(w *mqtt.Writer) {
 	}
 }
 
+// String returns a brief string representation of the packet. Suitable for logging
+func (c *Connect) String() string {
+	will := ""
+	if c.HasWill() {
+		will = ", " + c.Will().String()
+	}
+	return fmt.Sprintf("CONNECT (c%d, k%d, u%d, p%d%s)",
+		(c.flags&cleanSessionFlag)>>1,
+		time.Duration(c.keepAlive),
+		(c.flags&userNameFlag)>>7,
+		(c.flags&passwordFlag)>>6,
+		will)
+}
+
 // CleanSession returns true if the connection is requesting a clean session
 func (c *Connect) CleanSession() bool {
 	return (c.flags & cleanSessionFlag) != 0
@@ -280,11 +275,6 @@ func (c *Connect) KeepAlive() time.Duration {
 // Credentials returns the user name and password credentials or nil
 func (c *Connect) Credentials() *Credentials {
 	return c.creds
-}
-
-// String returns a brief string representation of the packet. Suitable for logging
-func (c *Connect) String() string {
-	return "CONNECT"
 }
 
 // Will returns the client will or nil
@@ -327,11 +317,6 @@ func ParseAckConnect(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	return &AckConnect{flags: bs[0], returnCode: bs[1]}, nil
 }
 
-// ID always returns 0 for a CONNACK packet
-func (a *AckConnect) ID() uint16 {
-	return 0
-}
-
 // Equals returns true if this packet is equal to the given packet, false if not
 func (a *AckConnect) Equals(p Packet) bool {
 	ac, ok := p.(*AckConnect)
@@ -356,11 +341,6 @@ type Disconnect int
 
 // DisconnectSingleton is the one and only instance of the Disconnect type
 const DisconnectSingleton = Disconnect(0)
-
-// ID always returns 0 for a DISCONNECT packet
-func (a Disconnect) ID() uint16 {
-	return 0
-}
 
 // Equals returns true if this packet is equal to the given packet, false if not
 func (Disconnect) Equals(p Packet) bool {

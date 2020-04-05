@@ -8,11 +8,6 @@ type PingRequest int
 // PingRequestSingleton is the one and only instance of the PingRequest type
 const PingRequestSingleton = PingRequest(0)
 
-// ID always returns 0 for a PINGREQ packet
-func (a PingRequest) ID() uint16 {
-	return 0
-}
-
 // Equals returns true if this packet is equal to the given packet, false if not
 func (PingRequest) Equals(p Packet) bool {
 	return p == PingRequestSingleton
@@ -34,11 +29,6 @@ type PingResponse int
 
 // PingResponseSingleton is the one and only instance of the PingResponse type
 const PingResponseSingleton = PingResponse(0)
-
-// ID always returns 0 for a PINGRESP packet
-func (a PingResponse) ID() uint16 {
-	return 0
-}
 
 // Equals returns true if this packet is equal to the given packet, false if not
 func (PingResponse) Equals(p Packet) bool {

@@ -272,7 +272,7 @@ func (p PubAck) ID() uint16 {
 
 // String returns a brief string representation of the packet. Suitable for logging
 func (p PubAck) String() string {
-	return fmt.Sprintf("PUBACK (m%d)", int(p))
+	return fmt.Sprintf("PUBACK (m%d)", p.ID())
 }
 
 // Write writes the MQTT bits of this packet on the given Writer
@@ -306,7 +306,7 @@ func (p PubRec) ID() uint16 {
 
 // String returns a brief string representation of the packet. Suitable for logging
 func (p PubRec) String() string {
-	return fmt.Sprintf("PUBREC (m%d)", int(p))
+	return fmt.Sprintf("PUBREC (m%d)", p.ID())
 }
 
 // Write writes the MQTT bits of this packet on the given Writer
@@ -340,7 +340,7 @@ func (p PubRel) ID() uint16 {
 
 // String returns a brief string representation of the packet. Suitable for logging
 func (p PubRel) String() string {
-	return fmt.Sprintf("PUBREL (m%d)", int(p))
+	return fmt.Sprintf("PUBREL (m%d)", p.ID())
 }
 
 // Write writes the MQTT bits of this packet on the given Writer
@@ -374,7 +374,7 @@ func (p PubComp) ID() uint16 {
 
 // String returns a brief string representation of the packet. Suitable for logging
 func (p PubComp) String() string {
-	return fmt.Sprintf("PUBCOMP (m%d)", int(p))
+	return fmt.Sprintf("PUBCOMP (m%d)", p.ID())
 }
 
 // Write writes the MQTT bits of this packet on the given Writer
