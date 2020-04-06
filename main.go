@@ -1,3 +1,5 @@
+// +build !citest
+
 package main
 
 import (
