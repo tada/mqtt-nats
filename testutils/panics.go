@@ -7,7 +7,7 @@ import "testing"
 func ShouldNotPanic(t *testing.T) {
 	t.Helper()
 	if r := recover(); r != nil {
-		t.Error("Unexpected panic")
+		t.Errorf("Unexpected panic")
 	}
 }
 
@@ -16,6 +16,6 @@ func ShouldNotPanic(t *testing.T) {
 func ShouldPanic(t *testing.T) {
 	t.Helper()
 	if r := recover(); r == nil {
-		t.Error("Expected panic but got none")
+		t.Errorf("Expected panic but got none")
 	}
 }
