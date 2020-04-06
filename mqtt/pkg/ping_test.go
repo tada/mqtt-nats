@@ -7,15 +7,13 @@ import (
 )
 
 func TestParsePingReq(t *testing.T) {
-	parse := func(*mqtt.Reader, byte, int) (Packet, error) {
+	writeReadAndCompare(t, PingRequestSingleton, func(*mqtt.Reader, byte, int) (Packet, error) {
 		return PingRequestSingleton, nil
-	}
-	writeReadAndCompare(t, PingRequestSingleton, parse, "PINGREQ")
+	}, "PINGREQ")
 }
 
 func TestParsePingResp(t *testing.T) {
-	parse := func(*mqtt.Reader, byte, int) (Packet, error) {
+	writeReadAndCompare(t, PingResponseSingleton, func(*mqtt.Reader, byte, int) (Packet, error) {
 		return PingResponseSingleton, nil
-	}
-	writeReadAndCompare(t, PingResponseSingleton, parse, "PINGRESP")
+	}, "PINGRESP")
 }

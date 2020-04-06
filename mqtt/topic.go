@@ -19,7 +19,7 @@ const (
 
 func SubscriptionToRegexp(s string) *regexp.Regexp {
 	w := strings.Builder{}
-	for i, p := range strings.Split(s, ".") {
+	for i, p := range strings.Split(s, "/") {
 		if i > 0 {
 			_ = w.WriteByte('/')
 		}

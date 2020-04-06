@@ -122,12 +122,12 @@ func TestPublishSubscribe_qos_1_restart(t *testing.T) {
 
 func TestMqttPublishNatsSubscribe(t *testing.T) {
 	pl := []byte("payload")
-	pp := pkg.SimplePublish("testing/some/topic", pl)
+	pp := pkg.SimplePublish("testing/s.o.m.e/topic", pl)
 	gotIt := make(chan bool, 1)
 	nc := natsConnect(t, natsPort)
 	defer nc.Close()
 
-	_, err := nc.Subscribe("testing.some.topic", func(m *nats.Msg) {
+	_, err := nc.Subscribe("testing.s/o/m/e.>", func(m *nats.Msg) {
 		if !bytes.Equal(pl, m.Data) {
 			t.Error("nats subscription did not receive expected data")
 		}
@@ -150,7 +150,7 @@ func TestNatsPublishMqttSubscribe(t *testing.T) {
 
 	c1 := mqttConnectClean(t, mqttPort)
 	sid := nextPacketID()
-	mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic}))
+	mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: "testing/+/topic"}))
 	mqttExpect(t, c1, pkg.NewSubAck(sid, 0))
 
 	gotIt := make(chan bool, 1)

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -102,23 +101,11 @@ func (r *retained) drop(t string) bool {
 	return dropped
 }
 
-var topicAndQoS = regexp.MustCompile(`^(.+)/([012])$`)
-
 func (r *retained) messagesMatchingRetainRequest(m *nats.Msg) ([]*pkg.Publish, []byte) {
 	natsTopics := strings.Split(string(m.Data), ",")
 	topics := make([]pkg.Topic, len(natsTopics))
 	for i := range natsTopics {
-		nt := natsTopics[i]
-		ts := topicAndQoS.FindStringSubmatch(nt)
-		tp := pkg.Topic{}
-		if ts == nil {
-			tp.Name = mqtt.FromNATSSubscription(nt)
-		} else {
-			tp.Name = mqtt.FromNATSSubscription(ts[1])
-			qos, _ := strconv.Atoi(ts[2])
-			tp.QoS = byte(qos)
-		}
-		topics[i] = tp
+		topics[i] = pkg.Topic{Name: mqtt.FromNATSSubscription(natsTopics[i])}
 	}
 	return r.matchingMessages(topics)
 }

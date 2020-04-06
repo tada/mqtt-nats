@@ -3,6 +3,7 @@ package test
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	"github.com/tada/mqtt-nats/mqtt/pkg"
 )
@@ -64,6 +65,9 @@ func TestConnect_will_qos_1(t *testing.T) {
 	// forcefully close connection
 	_ = conn.Close()
 
+	// Ensure that first package is wasted and a dup is published
+	time.Sleep(10 * time.Millisecond)
+
 	conn = mqttConnectClean(t, mqttPort)
 	mid := nextPacketID()
 	mqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: "testing/my/will", QoS: 1}))
@@ -88,6 +92,8 @@ func TestConnect_will_retain_qos_0(t *testing.T) {
 			Message: []byte("the will message"),
 			Retain:  true}, nil))
 	mqttExpect(t, c1, pkg.NewAckConnect(false, 0))
+	// forcefully close connection to make server publish will
+	_ = c1.Close()
 
 	gotIt := make(chan bool, 1)
 	go func() {
@@ -104,8 +110,6 @@ func TestConnect_will_retain_qos_0(t *testing.T) {
 		mqttDisconnect(t, c2)
 	}()
 
-	// forcefully close connection to make server publish will
-	_ = c1.Close()
 	assertMessageReceived(t, gotIt)
 
 	// check that retained will still exists

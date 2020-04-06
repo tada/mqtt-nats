@@ -38,7 +38,6 @@ type Server interface {
 	HandleRetain(pp *pkg.Publish) *pkg.Publish
 	PublishMatching(sp *pkg.Subscribe, c Client)
 	PublishWill(will *pkg.Will, creds *pkg.Credentials) error
-	MessagesMatchingRetainRequest(m *nats.Msg) ([]*pkg.Publish, []byte)
 }
 
 type Bridge interface {
@@ -217,43 +216,41 @@ func (s *server) startRetainedRequestHandler() error {
 }
 
 func (s *server) handleRetainedRequest(m *nats.Msg) {
-	pps, qs := s.MessagesMatchingRetainRequest(m)
+	pps, qs := s.retainedPackets.messagesMatchingRetainRequest(m)
+	var err error
 	if len(pps) == 0 {
-		return
+		err = m.Respond([]byte("[]"))
+	} else {
+		err = pio.Catch(func() error {
+			qos := byte(0)
+			buf := &bytes.Buffer{}
+			pio.WriteByte('[', buf)
+			for i := range pps {
+				pp := pps[i]
+				if qs[0] > qos {
+					qos = qs[0]
+				}
+				if i > 0 {
+					pio.WriteByte(',', buf)
+				}
+				pio.WriteString(`{"subject":`, buf)
+				jsonstream.WriteString(mqtt.ToNATS(pp.TopicName()), buf)
+				if pkg.IsPrintableASCII(pp.Payload()) {
+					pio.WriteString(`,"payload":`, buf)
+					jsonstream.WriteString(string(pp.Payload()), buf)
+				} else {
+					pio.WriteString(`,"payloadEnc":`, buf)
+					jsonstream.WriteString(base64.StdEncoding.EncodeToString(pp.Payload()), buf)
+				}
+				pio.WriteByte('}', buf)
+			}
+			pio.WriteByte(']', buf)
+			return m.Respond(buf.Bytes())
+		})
 	}
-	err := pio.Catch(func() error {
-		qos := byte(0)
-		buf := &bytes.Buffer{}
-		pio.WriteByte('[', buf)
-		for i := range pps {
-			pp := pps[i]
-			if qs[0] > qos {
-				qos = qs[0]
-			}
-			if i > 0 {
-				pio.WriteByte(',', buf)
-			}
-			pio.WriteString(`{"subject":`, buf)
-			jsonstream.WriteString(mqtt.ToNATS(pp.TopicName()), buf)
-			if pkg.IsPrintableASCII(pp.Payload()) {
-				pio.WriteString(`,"payload":`, buf)
-				jsonstream.WriteString(string(pp.Payload()), buf)
-			} else {
-				pio.WriteString(`,"payloadEnc":`, buf)
-				jsonstream.WriteString(base64.StdEncoding.EncodeToString(pp.Payload()), buf)
-			}
-			pio.WriteByte('}', buf)
-		}
-		pio.WriteByte(']', buf)
-		return m.Respond(buf.Bytes())
-	})
 	if err != nil {
 		s.Error("NATS publish of retained messages failed", err)
 	}
-}
-
-func (s *server) MessagesMatchingRetainRequest(m *nats.Msg) ([]*pkg.Publish, []byte) {
-	return s.retainedPackets.messagesMatchingRetainRequest(m)
 }
 
 func (s *server) natsOptions(creds *pkg.Credentials) (*nats.Options, error) {

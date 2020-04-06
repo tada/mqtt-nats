@@ -2,6 +2,7 @@ package pio
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 )
 
@@ -30,5 +31,21 @@ func TestWriteRune(t *testing.T) {
 	a := w.String()
 	if a != "⌘" {
 		t.Error("expected '⌘', got", a)
+	}
+}
+
+type badWriter int
+
+func (b badWriter) Write(p []byte) (n int, err error) {
+	return 0, &Error{Cause: errors.New("bad write")}
+}
+
+func TestWriteError(t *testing.T) {
+	err := Catch(func() error {
+		WriteRune('⌘', badWriter(0))
+		return nil
+	})
+	if err == nil {
+		t.Fatal("expected error")
 	}
 }
