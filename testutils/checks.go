@@ -1,3 +1,8 @@
+// Package testutils contains convenient testing checkers that compare a produced
+// value against an expected value (or condition).
+// There are value checks like `CheckEqual(expected, produced, t)``, and
+// checks that should run deferred like `defer ShouldPanic(t)`.
+//
 package testutils
 
 import (
