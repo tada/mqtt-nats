@@ -25,12 +25,18 @@ func (r *Reader) ReadByte() (byte, error) {
 	return 0, err
 }
 
+// ReadVarInt returns the next variable size unsigned integer from the input stream.
+// An io.ErrUnexpectedEOF is returned if an io.EOF is encountered before the integer could be fully read.
+// A "malformed compressed int" error is returned if the value is larger than 0x0FFFFFFF.
 func (r *Reader) ReadVarInt() (int, error) {
 	m := 1
 	v := 0
 	for {
 		b, err := r.ReadByte()
 		if err != nil {
+			if err == io.EOF {
+				err = io.ErrUnexpectedEOF
+			}
 			return 0, err
 		}
 		v += int(b&0x7f) * m

@@ -21,7 +21,8 @@ func CheckEqual(expected interface{}, got interface{}, t *testing.T) {
 // CheckNil checks if value is nil
 func CheckNil(got interface{}, t *testing.T) {
 	t.Helper()
-	if !reflect.ValueOf(got).IsNil() {
+	rf := reflect.ValueOf(got)
+	if rf.IsValid() && !rf.IsNil() {
 		t.Fatalf("Expected: nil, got %v", got)
 	}
 }
@@ -29,7 +30,8 @@ func CheckNil(got interface{}, t *testing.T) {
 // CheckNotNil checks if value is not nil
 func CheckNotNil(got interface{}, t *testing.T) {
 	t.Helper()
-	if reflect.ValueOf(got).IsNil() {
+	rf := reflect.ValueOf(got)
+	if !rf.IsValid() || rf.IsNil() {
 		t.Fatalf("Expected: not nil, got nil")
 	}
 }
