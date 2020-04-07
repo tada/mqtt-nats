@@ -34,7 +34,7 @@ jobs:
       env:
         COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        GO111MODULE=off go get github.com/thallgren/goveralls
+        go get github.com/mattn/goveralls
         $(go env GOPATH)/bin/goveralls -tags=citest -coverprofile=coverage.tmp -service=github
 #     uses: shogo82148/actions-goveralls@v1
 #     with:
