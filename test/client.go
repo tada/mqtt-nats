@@ -1,3 +1,5 @@
+// +build citest
+
 package test
 
 import (
@@ -10,6 +12,7 @@ import (
 	"github.com/nats-io/nuid"
 	"github.com/tada/mqtt-nats/mqtt"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
+	"github.com/tada/mqtt-nats/mqtt/pkgtest"
 )
 
 func nextClientID() string {
@@ -31,7 +34,7 @@ func mqttConnect(t *testing.T, port int) net.Conn {
 func mqttConnectClean(t *testing.T, port int) net.Conn {
 	conn := mqttConnect(t, port)
 	mqttSend(t, conn, pkg.NewConnect(nextClientID(), true, 1, nil, nil))
-	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
+	mqttExpect(t, conn, pkg.NewConnAck(false, 0))
 	return conn
 }
 
@@ -69,7 +72,7 @@ func mqttSend(t *testing.T, conn io.Writer, send ...pkg.Packet) {
 func mqttExpect(t *testing.T, conn io.Reader, expectations ...interface{}) {
 	t.Helper()
 	for _, e := range expectations {
-		a := parsePacket(t, conn)
+		a := pkgtest.Parse(t, conn)
 		switch e := e.(type) {
 		case pkg.Packet:
 			if !e.Equals(a) {

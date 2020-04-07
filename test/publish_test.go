@@ -83,7 +83,7 @@ func TestPublishSubscribe_qos_1_restart(t *testing.T) {
 	gotIt := make(chan bool, 1)
 	go func() {
 		mqttSend(t, c1, pkg.NewConnect(c1ID, false, 1, nil, nil))
-		mqttExpect(t, c1, pkg.NewAckConnect(false, 0))
+		mqttExpect(t, c1, pkg.NewConnAck(false, 0))
 
 		sid := nextPacketID()
 		mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 1}))
@@ -96,7 +96,7 @@ func TestPublishSubscribe_qos_1_restart(t *testing.T) {
 	c2ID := nextClientID()
 	c2 := mqttConnect(t, mqttPort)
 	mqttSend(t, c2, pkg.NewConnect(c2ID, false, 1, nil, nil))
-	mqttExpect(t, c2, pkg.NewAckConnect(false, 0))
+	mqttExpect(t, c2, pkg.NewConnAck(false, 0))
 	assertMessageReceived(t, gotIt)
 	mqttSend(t, c2, pp)
 	assertMessageReceived(t, gotIt)
@@ -106,12 +106,12 @@ func TestPublishSubscribe_qos_1_restart(t *testing.T) {
 	// client c1 reestablishes session and sends outstanding ack
 	c1 = mqttConnect(t, mqttPort)
 	mqttSend(t, c1, pkg.NewConnect(c1ID, false, 1, nil, nil))
-	mqttExpect(t, c1, pkg.NewAckConnect(true, 0))
+	mqttExpect(t, c1, pkg.NewConnAck(true, 0))
 
 	// client c2 reestablishes session and receives outstanding ack
 	c2 = mqttConnect(t, mqttPort)
 	mqttSend(t, c2, pkg.NewConnect(c2ID, false, 1, nil, nil))
-	mqttExpect(t, c2, pkg.NewAckConnect(true, 0))
+	mqttExpect(t, c2, pkg.NewConnAck(true, 0))
 
 	mqttSend(t, c1, pkg.PubAck(mid))
 	mqttDisconnect(t, c1)

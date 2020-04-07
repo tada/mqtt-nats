@@ -1,15 +1,21 @@
-package test
+// +build citest
+
+// Package pkgtest contains test utilities for the pkg package
+package pkgtest
 
 import (
 	"fmt"
 	"io"
 	"testing"
 
-	"github.com/tada/mqtt-nats/mqtt"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
+
+	"github.com/tada/mqtt-nats/mqtt"
 )
 
-func parsePacket(t *testing.T, rdr io.Reader) pkg.Packet {
+// Parse parses the next package from the given reader and returns it. t.Fatal(err) will be called
+// if an error occurs when reading or parsing.
+func Parse(t *testing.T, rdr io.Reader) pkg.Packet {
 	t.Helper()
 	// Read packet type and flags
 	r := mqtt.NewReader(rdr)
@@ -32,7 +38,7 @@ func parsePacket(t *testing.T, rdr io.Reader) pkg.Packet {
 
 	switch pkgType {
 	case pkg.TpConnAck:
-		if p, err = pkg.ParseAckConnect(r, b, rl); err == nil {
+		if p, err = pkg.ParseConnAck(r, b, rl); err == nil {
 			return p
 		}
 	case pkg.TpDisconnect:

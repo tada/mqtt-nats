@@ -11,7 +11,7 @@ import (
 func TestConnect(t *testing.T) {
 	conn := mqttConnect(t, mqttPort)
 	mqttSend(t, conn, pkg.NewConnect(nextClientID(), true, 1, nil, nil))
-	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
+	mqttExpect(t, conn, pkg.NewConnAck(false, 0))
 	mqttDisconnect(t, conn)
 }
 
@@ -19,19 +19,19 @@ func TestConnect_sessionPresent(t *testing.T) {
 	conn := mqttConnect(t, mqttPort)
 	c := pkg.NewConnect(nextClientID(), false, 1, nil, nil)
 	mqttSend(t, conn, c)
-	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
+	mqttExpect(t, conn, pkg.NewConnAck(false, 0))
 	mqttDisconnect(t, conn)
 
 	conn = mqttConnect(t, mqttPort)
 	mqttSend(t, conn, c)
-	mqttExpect(t, conn, pkg.NewAckConnect(true, 0))
+	mqttExpect(t, conn, pkg.NewConnAck(true, 0))
 	mqttDisconnect(t, conn)
 }
 
 func TestConnect_will_qos_0(t *testing.T) {
 	conn1 := mqttConnect(t, mqttPort)
 	mqttSend(t, conn1, pkg.NewConnect(nextClientID(), true, 1, nil, nil))
-	mqttExpect(t, conn1, pkg.NewAckConnect(false, 0))
+	mqttExpect(t, conn1, pkg.NewConnAck(false, 0))
 	mid := nextPacketID()
 	mqttSend(t, conn1, pkg.NewSubscribe(mid, pkg.Topic{Name: "testing/my/will"}))
 	mqttExpect(t, conn1, pkg.NewSubAck(mid, 0))
@@ -42,7 +42,7 @@ func TestConnect_will_qos_0(t *testing.T) {
 			&pkg.Will{
 				Topic:   "testing/my/will",
 				Message: []byte("the will message")}, nil))
-	mqttExpect(t, conn2, pkg.NewAckConnect(false, 0))
+	mqttExpect(t, conn2, pkg.NewConnAck(false, 0))
 	// forcefully close connection
 	_ = conn2.Close()
 
@@ -61,7 +61,7 @@ func TestConnect_will_qos_1(t *testing.T) {
 			Topic:   "testing/my/will",
 			Message: []byte("the will message"),
 			QoS:     1}, nil))
-	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
+	mqttExpect(t, conn, pkg.NewConnAck(false, 0))
 	// forcefully close connection
 	_ = conn.Close()
 
@@ -91,7 +91,7 @@ func TestConnect_will_retain_qos_0(t *testing.T) {
 			Topic:   willTopic,
 			Message: []byte("the will message"),
 			Retain:  true}, nil))
-	mqttExpect(t, c1, pkg.NewAckConnect(false, 0))
+	mqttExpect(t, c1, pkg.NewConnAck(false, 0))
 	// forcefully close connection to make server publish will
 	_ = c1.Close()
 
@@ -138,7 +138,7 @@ func TestConnect_will_retain_qos_1(t *testing.T) {
 			Message: willPayload,
 			QoS:     1,
 			Retain:  true}, nil))
-	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
+	mqttExpect(t, conn, pkg.NewConnAck(false, 0))
 	// forcefully close connection
 	_ = conn.Close()
 
@@ -187,24 +187,23 @@ func TestConnect_will_retain_qos_1_restart(t *testing.T) {
 			Message: willPayload,
 			QoS:     1,
 			Retain:  true}, nil))
-	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
+	mqttExpect(t, conn, pkg.NewConnAck(false, 0))
 	// forcefully close connection
 	_ = conn.Close()
+	time.Sleep(50 * time.Millisecond) // give bridge time to publish will
 
 	conn = mqttConnectClean(t, mqttPort)
 	mid := nextPacketID()
 	mqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
-	var ackID uint16
-	mqttExpect(t, conn,
-		pkg.NewSubAck(mid, 1),
-		func(p pkg.Packet) bool {
-			if pp, ok := p.(*pkg.Publish); ok {
-				ackID = pp.ID()
-				return pp.TopicName() == willTopic && bytes.Equal(pp.Payload(), willPayload) && pp.QoSLevel() == 1 && !pp.IsDup() && pp.Retain()
-			}
-			return false
-		})
-	mqttSend(t, conn, pkg.PubAck(ackID))
+	mqttExpect(t, conn, pkg.NewSubAck(mid, 1))
+
+	mqttExpect(t, conn, func(p pkg.Packet) bool {
+		if pp, ok := p.(*pkg.Publish); ok {
+			mqttSend(t, conn, pkg.PubAck(pp.ID()))
+			return pp.TopicName() == willTopic && bytes.Equal(pp.Payload(), willPayload) && pp.QoSLevel() == 1 && !pp.IsDup() && pp.Retain()
+		}
+		return false
+	})
 	mqttDisconnect(t, conn)
 
 	RestartBridge(t, mqttServer)
@@ -212,16 +211,15 @@ func TestConnect_will_retain_qos_1_restart(t *testing.T) {
 	conn = mqttConnectClean(t, mqttPort)
 	mid = nextPacketID()
 	mqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
+	mqttExpect(t, conn, pkg.NewSubAck(mid, 1))
 	mqttExpect(t, conn,
-		pkg.NewSubAck(mid, 1),
 		func(p pkg.Packet) bool {
 			if pp, ok := p.(*pkg.Publish); ok {
-				ackID = pp.ID()
+				mqttSend(t, conn, pkg.PubAck(pp.ID()))
 				return pp.TopicName() == willTopic && bytes.Equal(pp.Payload(), willPayload) && pp.QoSLevel() == 1 && !pp.IsDup() && pp.Retain()
 			}
 			return false
 		})
-	mqttSend(t, conn, pkg.PubAck(ackID))
 
 	// drop the retained packet
 	mqttSend(t, conn, pkg.NewPublish2(0, willTopic, []byte{}, 1, false, true))
@@ -241,10 +239,10 @@ func TestConnect_will_qos_1_restart(t *testing.T) {
 			&pkg.Credentials{
 				User:     "bob",
 				Password: []byte("password")}))
-	mqttExpect(t, conn, pkg.NewAckConnect(false, 0))
+	mqttExpect(t, conn, pkg.NewConnAck(false, 0))
 	// forcefully close connection
 	_ = conn.Close()
-
+	time.Sleep(50 * time.Millisecond) // give bridge time to publish will
 	RestartBridge(t, mqttServer)
 
 	conn = mqttConnectClean(t, mqttPort)
@@ -285,7 +283,7 @@ func TestConnect_badProtocolVersion(t *testing.T) {
 	cp := pkg.NewConnect(nextClientID(), true, 1, nil, nil)
 	cp.SetClientLevel(3)
 	mqttSend(t, conn, cp)
-	mqttExpect(t, conn, pkg.NewAckConnect(false, pkg.RtUnacceptableProtocolVersion))
+	mqttExpect(t, conn, pkg.NewConnAck(false, pkg.RtUnacceptableProtocolVersion))
 	mqttDisconnect(t, conn)
 }
 

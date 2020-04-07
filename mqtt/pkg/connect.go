@@ -288,23 +288,23 @@ func (c *Connect) DeleteWill() {
 	c.will = nil
 }
 
-// AckConnect is the MQTT CONNACK packet sent in response to a CONNECT
-type AckConnect struct {
+// ConnAck is the MQTT CONNACK packet sent in response to a CONNECT
+type ConnAck struct {
 	flags      byte
 	returnCode byte
 }
 
-// NewAckConnect creates an CONNACK packet
-func NewAckConnect(sessionPresent bool, returnCode ReturnCode) Packet {
+// NewConnAck creates an CONNACK packet
+func NewConnAck(sessionPresent bool, returnCode ReturnCode) Packet {
 	flags := byte(0x00)
 	if sessionPresent {
 		flags |= 0x01
 	}
-	return &AckConnect{flags: flags, returnCode: byte(returnCode)}
+	return &ConnAck{flags: flags, returnCode: byte(returnCode)}
 }
 
-// ParseAckConnect parses a CONNACK packet
-func ParseAckConnect(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
+// ParseConnAck parses a CONNACK packet
+func ParseConnAck(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	var err error
 	if pkLen != 2 {
 		return nil, errors.New("malformed CONNACK")
@@ -314,22 +314,27 @@ func ParseAckConnect(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &AckConnect{flags: bs[0], returnCode: bs[1]}, nil
+	return &ConnAck{flags: bs[0], returnCode: bs[1]}, nil
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (a *AckConnect) Equals(p Packet) bool {
-	ac, ok := p.(*AckConnect)
+func (a *ConnAck) Equals(p Packet) bool {
+	ac, ok := p.(*ConnAck)
 	return ok && *a == *ac
 }
 
+// ReturnCode returns the return code from the server
+func (a *ConnAck) ReturnCode() ReturnCode {
+	return ReturnCode(a.returnCode)
+}
+
 // String returns a brief string representation of the packet. Suitable for logging
-func (a *AckConnect) String() string {
+func (a *ConnAck) String() string {
 	return fmt.Sprintf("CONNACK (s%d, rt%d)", a.flags, a.returnCode)
 }
 
 // Write writes the MQTT bits of this packet on the given Writer
-func (a *AckConnect) Write(w *mqtt.Writer) {
+func (a *ConnAck) Write(w *mqtt.Writer) {
 	w.WriteU8(TpConnAck)
 	w.WriteU8(2)
 	w.WriteU8(a.flags)

@@ -1,3 +1,5 @@
+// +build citest
+
 package testutils
 
 import "testing"

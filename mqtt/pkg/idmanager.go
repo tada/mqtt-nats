@@ -12,9 +12,6 @@ import (
 // An IDManager manages packet IDs and ensures their uniqueness by maintaining a list of
 // IDs that are in use
 type IDManager interface {
-	jsonstream.Consumer
-	jsonstream.Streamer
-
 	// NextFreePacketID allocates and returns the next free packet ID
 	NextFreePacketID() uint16
 

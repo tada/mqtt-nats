@@ -17,7 +17,7 @@ func TestParseConnect(t *testing.T) {
 }
 
 func TestParseConnAck(t *testing.T) {
-	writeReadAndCompare(t, NewAckConnect(false, 1), ParseAckConnect, "CONNACK (s0, rt1)")
+	writeReadAndCompare(t, NewConnAck(false, 1), ParseConnAck, "CONNACK (s0, rt1)")
 }
 
 func TestParseDisconnect(t *testing.T) {
