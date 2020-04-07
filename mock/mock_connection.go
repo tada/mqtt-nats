@@ -29,6 +29,8 @@ import (
 // syscall.ETIMEOUT error return resulting from a TCP keepAlive
 // failure.
 //
+// TODO: This Connection uses the deadlines for both local and remote
+//
 type Connection struct {
 	input             bytes.Buffer
 	output            bytes.Buffer
@@ -90,16 +92,16 @@ func (a *Addr) String() string { return "0.0.0.0" }
 // Read can be made to time out and return an Error with Timeout() == true
 // after a fixed time limit; see SetDeadline and SetReadDeadline.
 func (c *Connection) Read(b []byte) (n int, err error) {
-	return c.readBufWithLock(b, &c.input, c.moreData, c.readDeadline)
+	return c.readBufWithLock(b, &c.input, c.moreData)
 }
 
 // RemoteRead reads data from the connection's remote end (this returns what was written with Write)
 func (c *Connection) RemoteRead(b []byte) (n int, err error) {
-	return c.readBufWithLock(b, &c.output, c.moreRemoteData, c.readDeadline) // TODO: should have Remote Deadline too
+	return c.readBufWithLock(b, &c.output, c.moreRemoteData)
 }
 
 // readBufWithLock reads from the buffer and waits for more data if it is empty
-func (c *Connection) readBufWithLock(b []byte, buffer *bytes.Buffer, condition *sync.Cond, deadline time.Time) (n int, err error) {
+func (c *Connection) readBufWithLock(b []byte, buffer *bytes.Buffer, condition *sync.Cond) (n int, err error) {
 	// TODO: timeout & read of 0 bytes?
 	for {
 		condition.L.Lock()
@@ -109,6 +111,7 @@ func (c *Connection) readBufWithLock(b []byte, buffer *bytes.Buffer, condition *
 			condition.L.Unlock()
 			return 0, io.EOF
 		}
+		deadline := c.readDeadline
 		if !deadline.IsZero() && time.Now().After(deadline) { // while all times are after "zero time", this avoids a system call to Now()
 			condition.L.Unlock()
 			return 0, ErrTimeout
