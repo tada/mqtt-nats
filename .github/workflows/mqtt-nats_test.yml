@@ -13,11 +13,6 @@ jobs:
         go-version: 1.13
       id: go
 
-    - name: Set up GOPATH
-      run: |
-        echo "::set-env name=GOPATH::${{ github.workspace }}"
-        echo "::add-path::${{ github.workspace }}/bin"
-
     - name: Check out code into the Go module directory
       uses: actions/checkout@v1
 
