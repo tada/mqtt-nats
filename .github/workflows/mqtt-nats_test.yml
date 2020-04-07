@@ -13,6 +13,11 @@ jobs:
         go-version: 1.13
       id: go
 
+    - name: Set up GOPATH
+      run: |
+        echo "::set-env name=GOPATH::${{ github.workspace }}"
+        echo "::add-path::${{ github.workspace }}/bin"
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v1
 
@@ -31,10 +36,15 @@ jobs:
 #        test $COV = '100.0%' || (echo "Expected 100% test coverage, got $COV" && exit 1)
 
     - name: Send coverage
-      uses: shogo82148/actions-goveralls@v1
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        path-to-profile: coverage.tmp
+      env:
+        COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        GO111MODULE=off go get github.com/thallgren/goveralls
+        $(go env GOPATH)/bin/goveralls -tags=citest -coverprofile=coverage.tmp -service=github
+#     uses: shogo82148/actions-goveralls@v1
+#     with:
+#       github-token: ${{ secrets.GITHUB_TOKEN }}
+#       path-to-profile: coverage.tmp
 
   test-windows:
     name: Test Windows
