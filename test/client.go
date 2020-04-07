@@ -12,7 +12,6 @@ import (
 	"github.com/nats-io/nuid"
 	"github.com/tada/mqtt-nats/mqtt"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
-	"github.com/tada/mqtt-nats/mqtt/pkgtest"
 )
 
 func nextClientID() string {
@@ -72,7 +71,7 @@ func mqttSend(t *testing.T, conn io.Writer, send ...pkg.Packet) {
 func mqttExpect(t *testing.T, conn io.Reader, expectations ...interface{}) {
 	t.Helper()
 	for _, e := range expectations {
-		a := pkgtest.Parse(t, conn)
+		a := pkg.Parse(t, conn)
 		switch e := e.(type) {
 		case pkg.Packet:
 			if !e.Equals(a) {

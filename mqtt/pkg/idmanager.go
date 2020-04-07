@@ -88,6 +88,7 @@ func (s *idManager) MarshalToJSON(w io.Writer) {
 }
 
 func (s *idManager) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
+	s.inFlight = make(map[uint16]bool, 37)
 	jsonstream.AssertDelimToken(t, '{')
 	for {
 		k, ok := jsonstream.AssertStringOrEnd(js, '}')

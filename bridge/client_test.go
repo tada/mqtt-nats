@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tada/mqtt-nats/mqtt/pkgtest"
-
 	"github.com/nats-io/nats.go"
 	"github.com/tada/mqtt-nats/logger"
 	"github.com/tada/mqtt-nats/mock"
@@ -108,7 +106,7 @@ func Test_client_natsConnError(t *testing.T) {
 	go cl.Serve()
 
 	writePacket(t, pkg.NewConnect("client-id", false, 1, nil, nil), rConn)
-	ca, ok := pkgtest.Parse(t, rConn).(*pkg.ConnAck)
+	ca, ok := pkg.Parse(t, rConn).(*pkg.ConnAck)
 	testutils.CheckTrue(ok, t)
 	testutils.CheckEqual(pkg.RtServerUnavailable, ca.ReturnCode(), t)
 }
@@ -144,7 +142,7 @@ func Test_client_publishWillError(t *testing.T) {
 		Topic:   "some/will",
 		Message: []byte("will message")}, nil), rConn)
 
-	ca, ok := pkgtest.Parse(t, rConn).(*pkg.ConnAck)
+	ca, ok := pkg.Parse(t, rConn).(*pkg.ConnAck)
 	testutils.CheckEqual(pkg.RtAccepted, ca.ReturnCode(), t)
 	testutils.CheckTrue(ok, t)
 	_ = conn.Close()
@@ -175,7 +173,7 @@ func Test_client_debugLog(t *testing.T) {
 
 	rConn := conn.Remote()
 	writePacket(t, pkg.NewConnect("client-id", false, 1, nil, nil), rConn)
-	ca, ok := pkgtest.Parse(t, rConn).(*pkg.ConnAck)
+	ca, ok := pkg.Parse(t, rConn).(*pkg.ConnAck)
 	testutils.CheckTrue(ok, t)
 	testutils.CheckEqual(pkg.RtAccepted, ca.ReturnCode(), t)
 	writePacket(t, pkg.PubRec(1), rConn)

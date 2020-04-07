@@ -7,23 +7,24 @@ import (
 )
 
 func TestParsePublish(t *testing.T) {
-	writeReadAndCompare(t, NewPublish(23, "some/topic", 2, []byte(`the "message"`), false, ""), ParsePublish, "PUBLISH (d0, q1, r0, m23, 'some/topic', ... (13 bytes))")
+	writeReadAndCompare(t, NewPublish(23, "some/topic", 2, []byte(`the "message"`), false, ""),
+		"PUBLISH (d0, q1, r0, m23, 'some/topic', ... (13 bytes))")
 }
 
 func TestParsePubAck(t *testing.T) {
-	writeReadAndCompare(t, PubAck(23), ParsePubAck, "PUBACK (m23)")
+	writeReadAndCompare(t, PubAck(23), "PUBACK (m23)")
 }
 
 func TestParsePubRec(t *testing.T) {
-	writeReadAndCompare(t, PubRec(23), ParsePubRec, "PUBREC (m23)")
+	writeReadAndCompare(t, PubRec(23), "PUBREC (m23)")
 }
 
 func TestParsePubRel(t *testing.T) {
-	writeReadAndCompare(t, PubRel(23), ParsePubRel, "PUBREL (m23)")
+	writeReadAndCompare(t, PubRel(23), "PUBREL (m23)")
 }
 
 func TestParsePubComp(t *testing.T) {
-	writeReadAndCompare(t, PubComp(23), ParsePubComp, "PUBCOMP (m23)")
+	writeReadAndCompare(t, PubComp(23), "PUBCOMP (m23)")
 }
 
 func TestPublish_MarshalToJSON(t *testing.T) {
