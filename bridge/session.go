@@ -262,9 +262,6 @@ func (s *session) Destroy() {
 }
 
 type SessionManager interface {
-	jsonstream.Consumer
-	jsonstream.Streamer
-
 	// Create creates a new session for the given clientID. Any previous session registered for
 	// the given id is discarded
 	Create(clientID string) Session

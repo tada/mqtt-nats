@@ -41,6 +41,9 @@ type Server interface {
 }
 
 type Bridge interface {
+	jsonstream.Consumer
+	jsonstream.Streamer
+
 	Server
 	Done() <-chan bool
 	Restart(ready *sync.WaitGroup) error
@@ -407,9 +410,9 @@ func (s *server) MarshalToJSON(w io.Writer) {
 	pio.WriteString(`,"id":`, w)
 	jsonstream.WriteString(s.session.ClientID(), w)
 	pio.WriteString(`,"idm":`, w)
-	s.IDManager.MarshalToJSON(w)
+	s.IDManager.(jsonstream.Streamer).MarshalToJSON(w)
 	pio.WriteString(`,"sm":`, w)
-	s.sm.MarshalToJSON(w)
+	s.sm.(jsonstream.Streamer).MarshalToJSON(w)
 	if !s.retainedPackets.Empty() {
 		pio.WriteString(`,"retained":`, w)
 		s.retainedPackets.MarshalToJSON(w)
@@ -443,9 +446,9 @@ func (s *server) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 		case "id":
 			id = jsonstream.AssertString(js)
 		case "idm":
-			jsonstream.AssertConsumer(js, s.IDManager)
+			jsonstream.AssertConsumer(js, s.IDManager.(jsonstream.Consumer))
 		case "sm":
-			jsonstream.AssertConsumer(js, s.sm)
+			jsonstream.AssertConsumer(js, s.sm.(jsonstream.Consumer))
 		case "retained":
 			jsonstream.AssertConsumer(js, s.retainedPackets)
 		case "pubacks":

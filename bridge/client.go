@@ -103,10 +103,14 @@ func (c *client) Serve() {
 
 // String returns a text suitable for logging of client messages.
 func (c *client) String() string {
-	if cp := c.connectPacket; cp != nil {
-		return "Client " + cp.ClientID()
+	switch c.State() {
+	case StateInfant:
+		return "Client (not yet connected)"
+	case StateConnected:
+		return "Client " + c.connectPacket.ClientID()
+	default:
+		return "Client " + c.connectPacket.ClientID() + " (disconnected)"
 	}
-	return "Client (not connected)"
 }
 
 func (c *client) State() byte {
@@ -166,12 +170,6 @@ func (c *client) Debug(args ...interface{}) {
 func (c *client) Error(args ...interface{}) {
 	if c.log.ErrorEnabled() {
 		c.log.Error(c.addFirst(args)...)
-	}
-}
-
-func (c *client) Info(args ...interface{}) {
-	if c.log.InfoEnabled() {
-		c.log.Info(c.addFirst(args)...)
 	}
 }
 
@@ -249,7 +247,7 @@ readNextPacket:
 			if retCode, ok := err.(pkg.ReturnCode); ok {
 				c.Debug("received", p, "return code", retCode)
 				c.setState(StateConnected)
-				c.queueForWrite(pkg.NewAckConnect(c.sessionPresent, retCode))
+				c.queueForWrite(pkg.NewConnAck(c.sessionPresent, retCode))
 			}
 		case pkg.TpPublish:
 			if p, err = pkg.ParsePublish(r, b, rl); err == nil {
@@ -311,28 +309,37 @@ func (c *client) handleConnect(cp *pkg.Connect) (time.Duration, error) {
 	cid := cp.ClientID()
 	m := c.server.SessionManager()
 	c.sessionPresent = false
+
 	if cp.CleanSession() {
 		c.session = m.Create(cid)
-		c.Debug("connected with clean session")
 	} else {
 		if s := m.Get(cid); s != nil {
 			c.session = s
 			c.sessionPresent = true
-			c.Debug("connected using preexisting session")
-			s.RestoreAckSubscriptions(c)
-			s.ResendClientUnack(c)
 		} else {
-			c.Debug("connected using new (unclean) session")
 			c.session = m.Create(cid)
 		}
 	}
+
 	var maxWait time.Duration
 	if cp.KeepAlive() > 0 {
 		// Max wait between control packets is 1.5 times the keep alive value
 		maxWait = (cp.KeepAlive() * 3) / 2
 	}
 	c.setState(StateConnected)
-	c.queueForWrite(pkg.NewAckConnect(c.sessionPresent, 0))
+	c.queueForWrite(pkg.NewConnAck(c.sessionPresent, 0))
+
+	if cp.CleanSession() {
+		c.Debug("connected with clean session")
+	} else {
+		if c.sessionPresent {
+			c.Debug("connected using preexisting session")
+			c.session.RestoreAckSubscriptions(c)
+			c.session.ResendClientUnack(c)
+		} else {
+			c.Debug("connected using new (unclean) session")
+		}
+	}
 	return maxWait, nil
 }
 

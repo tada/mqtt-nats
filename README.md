@@ -9,6 +9,14 @@ The mqtt-nats bridge enables [MQTT](http://mqtt.org/) devices to publish and sub
 ### Project status
 Currently under development.
 
+### Working with the code
+
+The test utilities within this code-base are tagged with the special build tag "citest". This flag is required
+for most of the tests to build and run. I.e. to run all tests, use:
+```
+go test -tags citest ./...
+```
+
 ### Current limitations:
 - Only MQTT 3.1.1 is supported
 - Only QoS levels 0 (at most once) and 1 (at least once)

@@ -31,10 +31,15 @@ jobs:
 #        test $COV = '100.0%' || (echo "Expected 100% test coverage, got $COV" && exit 1)
 
     - name: Send coverage
-      uses: shogo82148/actions-goveralls@v1
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        path-to-profile: coverage.tmp
+      env:
+        COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        go get github.com/mattn/goveralls
+        $(go env GOPATH)/bin/goveralls -tags=citest -coverprofile=coverage.tmp -service=github
+#     uses: shogo82148/actions-goveralls@v1
+#     with:
+#       github-token: ${{ secrets.GITHUB_TOKEN }}
+#       path-to-profile: coverage.tmp
 
   test-windows:
     name: Test Windows
@@ -51,4 +56,4 @@ jobs:
         uses: actions/checkout@v1
 
       - name: Test
-        run: go test -v ./...
+        run: go test -v -tags=citest ./...

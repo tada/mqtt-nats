@@ -1,3 +1,5 @@
+// +build citest
+
 // Package testutils contains convenient testing checkers that compare a produced
 // value against an expected value (or condition).
 // There are value checks like `CheckEqual(expected, produced, t)``, and
@@ -7,7 +9,9 @@ package testutils
 
 import (
 	"reflect"
+	"strings"
 	"testing"
+	"unsafe"
 )
 
 // CheckEqual checks if two values are deeply equal and calls t.Fatalf if not
@@ -65,5 +69,31 @@ func CheckFalse(got bool, t *testing.T) {
 	t.Helper()
 	if got {
 		t.Fatalf("Expected: false, got %v", got)
+	}
+}
+
+// EnsureFailed checks that the given test function fails with an Error or Fatal
+func EnsureFailed(t *testing.T, f func(t *testing.T), substrings ...string) {
+	tt := testing.T{}
+	rs := reflect.ValueOf(&tt).Elem()
+	x := make(chan bool, 1)
+	go func() {
+		defer func() { x <- true }() // GoExit runs all deferred calls
+		f(&tt)
+	}()
+	<-x
+	if !tt.Failed() {
+		t.Fail()
+	}
+	if len(substrings) > 0 {
+		// Pick the output bytes from the testing.T using an unsafe.Pointer.
+		rf := rs.FieldByName("common").FieldByName("output")
+		rf = reflect.NewAt(rf.Type(), unsafe.Pointer(rf.UnsafeAddr())).Elem()
+		le := string(rf.Interface().([]byte))
+		for _, ss := range substrings {
+			if !strings.Contains(le, ss) {
+				t.Fatalf("string %q does not contain %q", le, ss)
+			}
+		}
 	}
 }

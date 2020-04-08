@@ -58,3 +58,7 @@ func Test_testLogger_Error(t *testing.T) {
 	CheckEqual("ERROR", le[0], t)
 	CheckEqual("some stuff", le[1], t)
 }
+
+func TestClient_String(t *testing.T) {
+
+}

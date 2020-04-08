@@ -1,3 +1,7 @@
+run:
+  build-tags:
+    - citest
+
 issues:
   exclude-use-default: false
   exclude-rules:

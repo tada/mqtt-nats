@@ -12,9 +12,6 @@ import (
 // An IDManager manages packet IDs and ensures their uniqueness by maintaining a list of
 // IDs that are in use
 type IDManager interface {
-	jsonstream.Consumer
-	jsonstream.Streamer
-
 	// NextFreePacketID allocates and returns the next free packet ID
 	NextFreePacketID() uint16
 
@@ -91,6 +88,7 @@ func (s *idManager) MarshalToJSON(w io.Writer) {
 }
 
 func (s *idManager) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
+	s.inFlight = make(map[uint16]bool, 37)
 	jsonstream.AssertDelimToken(t, '{')
 	for {
 		k, ok := jsonstream.AssertStringOrEnd(js, '}')
