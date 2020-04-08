@@ -4,7 +4,7 @@ The mqtt-nats bridge enables [MQTT](http://mqtt.org/) devices to publish and sub
 [![](https://goreportcard.com/badge/github.com/tada/mqtt-nats)](https://goreportcard.com/report/github.com/tada/mqtt-nats)
 [![](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/tada/mqtt-nats)
 [![](https://github.com/tada/mqtt-nats/workflows/MQTT-NATS%20Test/badge.svg)](https://github.com/tada/mqtt-nats/actions)
-[![](https://coveralls.io/repos/github/tada/mqtt-nats/badge.svg)](https://coveralls.io/github/tada/mqtt-nats)
+[![](https://coveralls.io/repos/github/tada/mqtt-nats/badge.svg?service=github)](https://coveralls.io/github/tada/mqtt-nats)
 
 ### Project status
 Currently under development.
