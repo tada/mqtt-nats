@@ -62,7 +62,7 @@ func assertMessageReceived(t *testing.T, c <-chan bool) {
 	t.Helper()
 	select {
 	case <-c:
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(time.Second): // Wait time is somewhat arbitrary.
 		t.Fatalf(`expected packet did not arrive`)
 	}
 }
