@@ -91,7 +91,7 @@ func Test_MockConnection_Read_waits_for_data_until_close(t *testing.T) {
 
 func Test_MockConnection_Read_waits_until_given_read_deadline(t *testing.T) {
 	conn := NewConnection()
-	if err := conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond)); err != nil {
+	if err := conn.SetDeadline(time.Now().Add(200 * time.Millisecond)); err != nil {
 		t.Fatal(err)
 	}
 

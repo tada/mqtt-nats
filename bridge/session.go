@@ -35,9 +35,9 @@ type Session interface {
 	// is currently waiting for an Ack.
 	AwaitsAck(uint16) bool
 
-	// AckReceived will close a pending ack subscription from the session. It returns whether or not
-	// such an ack was pending
-	AckReceived(uint16) bool
+	// AckReceived will delete pending ack subscription from the session and return them. It is up
+	// to the caller to cancel the returned subscriptions.
+	AckReceived(uint16) []*nats.Subscription
 
 	// ClientAckRequested remembers the id of a packet which has been sent to the client. The packet stems from a NATS
 	// subscription with QoS level > 0 and it is now expected that the client sends an PubACK back to which can be
@@ -169,18 +169,17 @@ func (s *session) RestoreAckSubscriptions(c *client) {
 	}
 }
 
-func (s *session) AckReceived(packetID uint16) bool {
-	awaits := false
+func (s *session) AckReceived(packetID uint16) []*nats.Subscription {
+	var nss []*nats.Subscription
 	s.awaitsAckLock.Lock()
 	if s.awaitsAck != nil {
-		var sb *nats.Subscription
-		if sb, awaits = s.awaitsAck[packetID]; awaits {
-			_ = sb.Unsubscribe()
+		if sb, awaits := s.awaitsAck[packetID]; awaits {
+			nss = append(nss, sb)
 			delete(s.awaitsAck, packetID)
 		}
 	}
 	s.awaitsAckLock.Unlock()
-	return awaits
+	return nss
 }
 
 func (s *session) AckRequested(packetID uint16, sb *nats.Subscription) {

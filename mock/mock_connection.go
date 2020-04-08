@@ -222,13 +222,11 @@ func (c *Connection) RemoteAddr() net.Addr {
 //
 // TODO: At present the WriteDeadLine does not have any effect.
 func (c *Connection) SetDeadline(t time.Time) error {
-	if err := c.SetReadDeadline(t); err != nil {
-		return err
+	err := c.SetReadDeadline(t)
+	if err == nil {
+		err = c.SetWriteDeadline(t)
 	}
-	if err := c.SetWriteDeadline(t); err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // SetReadDeadline sets the deadline for future Read calls
@@ -294,7 +292,7 @@ func (r *Remote) ReadByte() (byte, error) {
 	if err != nil || n != 1 {
 		return 0, err
 	}
-	return b[0], nil
+	return b[0], err
 }
 
 // Remote returns a io.ReadWriter for the remote end of this MockConnetion

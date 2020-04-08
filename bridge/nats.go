@@ -46,69 +46,81 @@ func (c *client) natsSubscribeAck(topic string) (*nats.Subscription, error) {
 		mt := ParseReplyTopic(m.Subject)
 		if mt != nil {
 			if s := c.server.SessionManager().Get(mt.ClientID()); s != nil && s.ID() == mt.SessionID() {
-				s.AckReceived(mt.PacketID())
+				c.cancelNatsSubscriptions(s.AckReceived(mt.PacketID()))
 				c.queueForWrite(pkg.PubAck(mt.PacketID()))
 			}
 		}
 	})
 }
 
-func (c *client) addNatsSubscription(s *nats.Subscription) {
-	c.subLock.Lock()
-	old := c.natsSubs[s.Subject]
-	c.natsSubs[s.Subject] = s
-	c.subLock.Unlock()
-
-	if old != nil {
-		if err := old.Unsubscribe(); err != nil {
-			c.Error(err)
+func (c *client) cancelNatsSubscriptions(nss []*nats.Subscription) {
+	for i := range nss {
+		ns := nss[i]
+		if err := ns.Unsubscribe(); err != nil {
+			c.Error("NATS unsubscribe", ns.Subject, err)
 		}
 	}
 }
 
-func (c *client) natsSubscribe(sp *pkg.Subscribe) error {
+func (c *client) natsSubscribe(sp *pkg.Subscribe) {
 	tps := sp.Topics()
-	sps := make([]*nats.Subscription, len(tps))
+	nms := make([]string, len(tps))
+	qss := make([]byte, len(tps))
+	var nss []*nats.Subscription
+	c.subLock.Lock()
 	for i := range tps {
 		tp := tps[i]
-		sp, err := c.natsConn.Subscribe(mqtt.ToNATSSubscription(tp.Name), func(m *nats.Msg) {
-			c.natsResponse(tp.QoS, m)
-		})
-		c.addNatsSubscription(sp)
-		if err != nil {
-			return err
+		nm := mqtt.ToNATSSubscription(tp.Name)
+		nms[i] = nm
+		qss[i] = tp.QoS
+		if os := c.natsSubs[nm]; os != nil {
+			delete(c.natsSubs, nm)
+			nss = append(nss, os)
 		}
-		sps[i] = sp
 	}
+	c.subLock.Unlock()
+	c.cancelNatsSubscriptions(nss)
 
-	topicReturns := make([]byte, len(tps))
-	for i := range tps {
-		tr := tps[i].QoS
-		if tr > 1 {
-			// Max QoS level is 1.
-			tr = 1
+	nss = make([]*nats.Subscription, 0, len(nms))
+	for i := range nms {
+		nm := nms[i]
+		qs := qss[i]
+		if qs > 1 {
+			qs = 1
+			qss[i] = 1
 		}
-		topicReturns[i] = tr
+		ns, err := c.natsConn.Subscribe(nm, func(m *nats.Msg) {
+			c.natsResponse(qs, m)
+		})
+		if err == nil {
+			nss = append(nss, ns)
+		} else {
+			c.Error("NATS subscribe", nm, err)
+			qss[i] = 0x80
+		}
 	}
-	c.queueForWrite(pkg.NewSubAck(sp.ID(), topicReturns...))
-	return nil
+	c.subLock.Lock()
+	for i := range nss {
+		ns := nss[i]
+		c.natsSubs[ns.Subject] = ns
+	}
+	c.subLock.Unlock()
+	c.queueForWrite(pkg.NewSubAck(sp.ID(), qss...))
 }
 
 func (c *client) natsUnsubscribe(up *pkg.Unsubscribe) {
 	tps := up.Topics()
-	sps := make([]*nats.Subscription, 0, len(tps))
+	nss := make([]*nats.Subscription, 0, len(tps))
 	c.subLock.Lock()
 	for i := range tps {
 		subj := mqtt.ToNATSSubscription(tps[i])
-		if sp := c.natsSubs[subj]; sp != nil {
-			sps = append(sps, sp)
+		if ns := c.natsSubs[subj]; ns != nil {
+			nss = append(nss, ns)
 			delete(c.natsSubs, subj)
 		}
 	}
 	c.subLock.Unlock()
-	for i := range sps {
-		_ = sps[i].Unsubscribe()
-	}
+	c.cancelNatsSubscriptions(nss)
 	c.queueForWrite(pkg.UnsubAck(up.ID()))
 }
 

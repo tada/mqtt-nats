@@ -92,20 +92,21 @@ func TestConnect_will_retain_qos_0(t *testing.T) {
 			Message: []byte("the will message"),
 			Retain:  true}, nil))
 	mqttExpect(t, c1, pkg.NewConnAck(false, 0))
+
 	// forcefully close connection to make server publish will
 	_ = c1.Close()
+	time.Sleep(10 * time.Millisecond) // give bridge time to handle retained
 
 	gotIt := make(chan bool, 1)
 	go func() {
 		c2 := mqttConnectClean(t, mqttPort)
 		mid := nextPacketID()
 		mqttSend(t, c2, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic}))
-		mqttExpect(t, c2,
-			pkg.NewSubAck(mid, 0),
-			func(p pkg.Packet) bool {
-				pp, ok := p.(*pkg.Publish)
-				return ok && pp.TopicName() == willTopic && pp.QoSLevel() == 0 && !pp.IsDup() && pp.Retain()
-			})
+		mqttExpect(t, c2, pkg.NewSubAck(mid, 0))
+		mqttExpect(t, c2, func(p pkg.Packet) bool {
+			pp, ok := p.(*pkg.Publish)
+			return ok && pp.TopicName() == willTopic && pp.QoSLevel() == 0 && !pp.IsDup() && pp.Retain()
+		})
 		gotIt <- true
 		mqttDisconnect(t, c2)
 	}()

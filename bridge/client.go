@@ -278,9 +278,8 @@ readNextPacket:
 			if p, err = pkg.ParseSubscribe(r, b, rl); err == nil {
 				c.Debug("received", p)
 				sp := p.(*pkg.Subscribe)
-				if err = c.natsSubscribe(sp); err == nil {
-					c.server.PublishMatching(sp, c)
-				}
+				c.natsSubscribe(sp)
+				c.server.PublishMatching(sp, c)
 			}
 		case pkg.TpUnsubscribe:
 			if p, err = pkg.ParseUnsubscribe(r, b, rl); err == nil {
