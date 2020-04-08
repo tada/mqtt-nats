@@ -114,9 +114,9 @@ func TestPublishSubscribe_qos_1_restart(t *testing.T) {
 	mqttExpect(t, c2, pkg.NewConnAck(true, 0))
 
 	mqttSend(t, c1, pkg.PubAck(mid))
-	mqttDisconnect(t, c1)
-
 	mqttExpect(t, c2, pkg.PubAck(mid))
+
+	mqttDisconnect(t, c1)
 	mqttDisconnect(t, c2)
 }
 

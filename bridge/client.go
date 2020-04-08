@@ -154,10 +154,8 @@ func (c *client) SetDisconnected(err error) {
 		}
 		c.err = err
 
-		if err != io.ErrUnexpectedEOF {
-			// release reader block
-			_ = c.mqttConn.SetReadDeadline(time.Now().Add(time.Millisecond))
-		}
+		// release reader block
+		_ = c.mqttConn.SetReadDeadline(time.Now().Add(time.Millisecond))
 	}
 }
 
