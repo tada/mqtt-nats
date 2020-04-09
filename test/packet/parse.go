@@ -1,5 +1,6 @@
 // +build citest
 
+// Package packet contains a test version of the MQTT packet parser
 package packet
 
 import (

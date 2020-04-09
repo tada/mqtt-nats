@@ -1,5 +1,7 @@
 // +build citest
 
+// Package full contains the test utilities that enables full roundtrip testing with both an mqtt-bridge and
+// a NATS test server.
 package full
 
 import (

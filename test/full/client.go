@@ -19,7 +19,7 @@ func NextClientID() string {
 	return "testclient-" + nuid.Next()
 }
 
-// mqttConnect establishes a tcp connection to the given port on the default host
+// MqttConnect establishes a tcp connection to the given port on the default host
 func MqttConnect(t *testing.T, port int) net.Conn {
 	t.Helper()
 	conn, err := net.Dial("tcp", ":"+strconv.Itoa(port))
@@ -29,7 +29,7 @@ func MqttConnect(t *testing.T, port int) net.Conn {
 	return conn
 }
 
-// mqttConnectClean establishes a tcp connection to the given port on the default host, sends the
+// MqttConnectClean establishes a tcp connection to the given port on the default host, sends the
 // initial connect packet for a clean session and awaits the CONNACK.
 func MqttConnectClean(t *testing.T, port int) net.Conn {
 	conn := MqttConnect(t, port)
@@ -38,7 +38,7 @@ func MqttConnectClean(t *testing.T, port int) net.Conn {
 	return conn
 }
 
-// mqttDisconnect sends a disconnect packet and closes the connection
+// MqttDisconnect sends a disconnect packet and closes the connection
 func MqttDisconnect(t *testing.T, conn io.WriteCloser) {
 	t.Helper()
 	defer func() {
@@ -54,7 +54,7 @@ func MqttDisconnect(t *testing.T, conn io.WriteCloser) {
 	}
 }
 
-// mqttSend writes the given packets on the given connection
+// MqttSend writes the given packets on the given connection
 func MqttSend(t *testing.T, conn io.Writer, send ...pkg.Packet) {
 	t.Helper()
 	buf := mqtt.NewWriter()
@@ -67,7 +67,7 @@ func MqttSend(t *testing.T, conn io.Writer, send ...pkg.Packet) {
 	}
 }
 
-// mqttExpect will read one packet for each entry in the list of expectations and assert that it is matched
+// MqttExpect will read one packet for each entry in the list of expectations and assert that it is matched
 // by that entry. An expectation is either an expected verbatim pkg.Packet or a PacketMatcher function.
 func MqttExpect(t *testing.T, conn io.Reader, expectations ...interface{}) {
 	t.Helper()
@@ -88,7 +88,7 @@ func MqttExpect(t *testing.T, conn io.Reader, expectations ...interface{}) {
 	}
 }
 
-// mqttExpectConnReset will make a read attempt and expect that it fails with an error
+// MqttExpectConnReset will make a read attempt and expect that it fails with an error
 func MqttExpectConnReset(t *testing.T, conn net.Conn) {
 	t.Helper()
 	_, err := conn.Read([]byte{0})
@@ -106,7 +106,7 @@ func MqttExpectConnReset(t *testing.T, conn net.Conn) {
 	t.Fatalf("connection is not reset: %v", err)
 }
 
-// mqttExpectConnReset will make a read attempt and expect that it fails with an error
+// MqttExpectConnClosed will make a read attempt and expect that it fails with an error
 func MqttExpectConnClosed(t *testing.T, conn net.Conn) {
 	t.Helper()
 	_, err := conn.Read([]byte{0})
