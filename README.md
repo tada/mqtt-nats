@@ -6,22 +6,37 @@ The mqtt-nats bridge enables [MQTT](http://mqtt.org/) devices to publish and sub
 [![](https://github.com/tada/mqtt-nats/workflows/MQTT-NATS%20Test/badge.svg)](https://github.com/tada/mqtt-nats/actions)
 [![](https://coveralls.io/repos/github/tada/mqtt-nats/badge.svg?service=github)](https://coveralls.io/github/tada/mqtt-nats)
 
-### Project status
+## Project status
 Currently under development.
 
-### Working with the code
+## Getting started
 
+### Obtaining and running the bridge
+You can install the binary using go get
+```
+go get github.com/tada/mqtt-nats
+```
+If you just start using the command `mqtt-nats` it will create an MQTT server on port 1883 that will attempt to connect
+to a NATS server using the default URL "nats://127.0.0.1:4222". Use:
+```
+mqtt-nats -help
+```
+to get a list of all configurable options.
+
+### Run the tests
 The test utilities within this code-base are tagged with the special build tag "citest". This flag is required
 for most of the tests to build and run. I.e. to run all tests, use:
 ```
 go test -tags citest ./...
 ```
 
-### Current limitations:
+## Current limitations:
 - Only MQTT 3.1.1 is supported
 - Only QoS levels 0 (at most once) and 1 (at least once)
 - The bridge has no way of knowing when new subscriptions are added in the NATS network and hence, cannot send retained
 messages in response to such subscriptions.
+
+## Solutions and workarounds
 
 ### QoS level 1 is accomplished using the NATS reply-to subject.
 When the bridge receives an MQTT publish with QoS = 1 from a client, it forwards that to NATS with a reply-to subject.
