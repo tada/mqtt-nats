@@ -7,15 +7,21 @@ import (
 
 	"github.com/tada/mqtt-nats/bridge"
 	"github.com/tada/mqtt-nats/logger"
+	"github.com/tada/mqtt-nats/test/full"
 )
 
 var mqttServer bridge.Bridge
 
-const storageFile = "mqtt-nats.json"
+const (
+	storageFile          = "mqtt-nats.json"
+	mqttPort             = 11883
+	natsPort             = 14222
+	retainedRequestTopic = "mqtt.retained.request"
+)
 
 func TestMain(m *testing.M) {
 	_ = os.Remove(storageFile)
-	natsServer := NATSServerOnPort(natsPort)
+	natsServer := full.NATSServerOnPort(natsPort)
 
 	// NOTE: Setting level to logger.Debug here is very helpful when authoring and debugging tests but
 	//  it also makes the tests very verbose.
@@ -28,7 +34,7 @@ func TestMain(m *testing.M) {
 		RetainedRequestTopic: retainedRequestTopic,
 		StoragePath:          storageFile}
 	var err error
-	mqttServer, err = RunBridgeOnPorts(lg, &opts)
+	mqttServer, err = full.RunBridgeOnPorts(lg, &opts)
 
 	var code int
 	if err == nil {

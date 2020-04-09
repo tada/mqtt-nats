@@ -1,3 +1,5 @@
+// +build citest
+
 // Package mock contains mocking/simulated versions of real runtime types
 // primarily used for testing.
 //

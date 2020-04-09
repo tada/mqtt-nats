@@ -1,6 +1,8 @@
 // +build citest
 
-package test
+// Package full contains the test utilities that enables full roundtrip testing with both an mqtt-bridge and
+// a NATS test server.
+package full
 
 import (
 	"sync"
@@ -12,10 +14,6 @@ import (
 	"github.com/tada/mqtt-nats/bridge"
 	"github.com/tada/mqtt-nats/logger"
 )
-
-const mqttPort = 11883
-const natsPort = 14222
-const retainedRequestTopic = "mqtt.retained.request"
 
 func RunBridgeOnPorts(lg logger.Logger, opts *bridge.Options) (bridge.Bridge, error) {
 	srv, err := bridge.New(opts, lg)
@@ -58,7 +56,7 @@ func NATSServerWithOptions(opts server.Options) *server.Server {
 	return testserver.RunServer(&opts)
 }
 
-func assertMessageReceived(t *testing.T, c <-chan bool) {
+func AssertMessageReceived(t *testing.T, c <-chan bool) {
 	t.Helper()
 	select {
 	case <-c:
@@ -67,7 +65,7 @@ func assertMessageReceived(t *testing.T, c <-chan bool) {
 	}
 }
 
-func assertTimeout(t *testing.T, c <-chan bool) {
+func AssertTimeout(t *testing.T, c <-chan bool) {
 	t.Helper()
 	select {
 	case <-c:

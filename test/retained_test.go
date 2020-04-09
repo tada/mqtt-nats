@@ -8,6 +8,7 @@ import (
 
 	"github.com/tada/mqtt-nats/mqtt"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
+	"github.com/tada/mqtt-nats/test/full"
 )
 
 func decodeRetained(t *testing.T, data []byte) []*pkg.Publish {
@@ -34,13 +35,13 @@ func decodeRetained(t *testing.T, data []byte) []*pkg.Publish {
 }
 
 func TestNATS_requestRetained(t *testing.T) {
-	conn := mqttConnectClean(t, mqttPort)
+	conn := full.MqttConnectClean(t, mqttPort)
 	pp1 := pkg.NewPublish2(0, "testing/s.o.m.e/retained/first", []byte("the first retained message"), 0, false, true)
 	pp2 := pkg.NewPublish2(0, "testing/s.o.m.e/retained/second", []byte("the second retained message"), 0, false, true)
-	mqttSend(t, conn, pp1, pp2)
-	mqttDisconnect(t, conn)
+	full.MqttSend(t, conn, pp1, pp2)
+	full.MqttDisconnect(t, conn)
 
-	nc := natsConnect(t, natsPort)
+	nc := full.NatsConnect(t, natsPort)
 	defer nc.Close()
 
 	m, err := nc.Request(retainedRequestTopic, []byte("testing.s/o/m/e.retained.>"), 10*time.Millisecond)
