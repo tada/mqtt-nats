@@ -211,10 +211,9 @@ func (s *server) drainAndShutdown() error {
 
 func (s *server) startRetainedRequestHandler() error {
 	conn, err := s.serverNatsConn()
-	if err != nil {
-		return err
+	if err == nil {
+		_, err = conn.Subscribe(s.opts.RetainedRequestTopic, s.handleRetainedRequest)
 	}
-	_, err = conn.Subscribe(s.opts.RetainedRequestTopic, s.handleRetainedRequest)
 	return err
 }
 
@@ -368,38 +367,33 @@ func (s *server) republish(np *natsPub) {
 		// message originated, must be closed on function return
 		defer conn.Close()
 	}
-	if err != nil {
-		s.Error(err)
-		return
-	}
 
-	pp := np.pp
-	replyTo := NewReplyTopic(s.session, pp).String()
-	sub, err := conn.SubscribeSync(replyTo)
-	if err != nil {
-		s.Error(err)
-		return
-	}
-
-	s.Debug("republish", pp)
-	if err = conn.PublishRequest(mqtt.ToNATS(pp.TopicName()), replyTo, pp.Payload()); err != nil {
-		s.Error(err)
-		return
-	}
-
-	if _, err = sub.NextMsg(2 * time.Second); err == nil {
-		s.Debug("ack", pp.ID())
-		s.trackAckLock.Lock()
-		if s.pubAcks != nil {
-			delete(s.pubAcks, pp.ID())
-			if len(s.pubAcks) == 0 {
-				s.pubAckTimer.Stop()
-				s.pubAckTimer = nil
-				s.pubAcks = nil
+	if err == nil {
+		pp := np.pp
+		replyTo := NewReplyTopic(s.session, pp).String()
+		var sub *nats.Subscription
+		if sub, err = conn.SubscribeSync(replyTo); err == nil {
+			s.Debug("republish", pp)
+			if err = conn.PublishRequest(mqtt.ToNATS(pp.TopicName()), replyTo, pp.Payload()); err == nil {
+				if _, err = sub.NextMsg(2 * time.Second); err == nil {
+					s.Debug("ack", pp.ID())
+					s.trackAckLock.Lock()
+					if s.pubAcks != nil {
+						delete(s.pubAcks, pp.ID())
+						if len(s.pubAcks) == 0 {
+							s.pubAckTimer.Stop()
+							s.pubAckTimer = nil
+							s.pubAcks = nil
+						}
+					}
+					s.trackAckLock.Unlock()
+				} else if err == nats.ErrTimeout {
+					err = nil // expected and will cause renewed republish
+				}
 			}
 		}
-		s.trackAckLock.Unlock()
-	} else if err != nats.ErrTimeout {
+	}
+	if err != nil {
 		s.Error(err)
 	}
 }
@@ -544,18 +538,18 @@ func (s *server) load(path string) error {
 
 func (s *server) persist(path string) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
+	if err == nil {
+		defer func() {
+			_ = f.Close()
+		}()
+		err = pio.Catch(func() error {
+			w := bufio.NewWriter(f)
+			s.MarshalToJSON(w)
+			s.Debug("server State persisted to ", path)
+			return w.Flush()
+		})
 	}
-	defer func() {
-		err = f.Close()
-	}()
-	return pio.Catch(func() error {
-		w := bufio.NewWriter(f)
-		s.MarshalToJSON(w)
-		s.Debug("server State persisted to ", path)
-		return w.Flush()
-	})
+	return err
 }
 
 func getTCPListener(opts *Options) (net.Listener, error) {

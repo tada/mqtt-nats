@@ -30,7 +30,7 @@ func RunBridgeOnPorts(lg logger.Logger, opts *bridge.Options) (bridge.Bridge, er
 		}
 	}()
 	serverReady.Wait()
-	return srv, nil
+	return srv, err
 }
 
 func RestartBridge(t *testing.T, b bridge.Bridge) {
@@ -48,12 +48,12 @@ func RestartBridge(t *testing.T, b bridge.Bridge) {
 func NATSServerOnPort(port int) *server.Server {
 	opts := testserver.DefaultTestOptions
 	opts.Port = port
-	return NATSServerWithOptions(opts)
+	return NATSServerWithOptions(&opts)
 }
 
 // NATSServerWithOptions will run a server with the given options.
-func NATSServerWithOptions(opts server.Options) *server.Server {
-	return testserver.RunServer(&opts)
+func NATSServerWithOptions(opts *server.Options) *server.Server {
+	return testserver.RunServer(opts)
 }
 
 func AssertMessageReceived(t *testing.T, c <-chan bool) {

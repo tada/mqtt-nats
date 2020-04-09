@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tada/mqtt-nats/test/packet"
-
 	"github.com/tada/mqtt-nats/mqtt"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
+	"github.com/tada/mqtt-nats/test/packet"
 )
 
 func writeReadAndCompare(t *testing.T, p pkg.Packet, ex string) {
