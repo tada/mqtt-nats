@@ -8,12 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tada/mqtt-nats/test/packet"
+
 	"github.com/nats-io/nats.go"
 	"github.com/tada/mqtt-nats/logger"
-	"github.com/tada/mqtt-nats/mock"
 	"github.com/tada/mqtt-nats/mqtt"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
-	"github.com/tada/mqtt-nats/testutils"
+	"github.com/tada/mqtt-nats/test/mock"
+	"github.com/tada/mqtt-nats/test/utils"
 )
 
 type mockServer struct {
@@ -66,7 +68,7 @@ func writePacket(t *testing.T, p pkg.Packet, w io.Writer) {
 	mw := mqtt.NewWriter()
 	p.Write(mw)
 	_, err := w.Write(mw.Bytes())
-	testutils.CheckNotError(err, t)
+	utils.CheckNotError(err, t)
 }
 
 var silent = logger.New(logger.Silent, nil, nil)
@@ -82,17 +84,17 @@ func Test_client_String(t *testing.T) {
 		done <- true
 	}()
 
-	testutils.CheckEqual("Client (not yet connected)", cl.(fmt.Stringer).String(), t)
+	utils.CheckEqual("Client (not yet connected)", cl.(fmt.Stringer).String(), t)
 
 	rConn := conn.Remote()
 	writePacket(t, pkg.NewConnect("client-id", false, 1, nil, nil), rConn)
 	bs := make([]byte, 2)
 	_, err := rConn.Read(bs)
-	testutils.CheckNotError(err, t)
-	testutils.CheckEqual("Client client-id", cl.(fmt.Stringer).String(), t)
+	utils.CheckNotError(err, t)
+	utils.CheckEqual("Client client-id", cl.(fmt.Stringer).String(), t)
 	writePacket(t, pkg.DisconnectSingleton, rConn)
 	<-done
-	testutils.CheckEqual("Client client-id (disconnected)", cl.(fmt.Stringer).String(), t)
+	utils.CheckEqual("Client client-id (disconnected)", cl.(fmt.Stringer).String(), t)
 }
 
 // Test_client_natsConnError tests that the server responds with a ConnAck containing
@@ -106,9 +108,9 @@ func Test_client_natsConnError(t *testing.T) {
 	go cl.Serve()
 
 	writePacket(t, pkg.NewConnect("client-id", false, 1, nil, nil), rConn)
-	ca, ok := pkg.Parse(t, rConn).(*pkg.ConnAck)
-	testutils.CheckTrue(ok, t)
-	testutils.CheckEqual(pkg.RtServerUnavailable, ca.ReturnCode(), t)
+	ca, ok := packet.Parse(t, rConn).(*pkg.ConnAck)
+	utils.CheckTrue(ok, t)
+	utils.CheckEqual(pkg.RtServerUnavailable, ca.ReturnCode(), t)
 }
 
 type collectLogsT struct {
@@ -129,7 +131,7 @@ func Test_client_publishWillError(t *testing.T) {
 	conn := mock.NewConnection()
 	ms := newMockServer(t)
 	ms.willError = errors.New("unauthorized")
-	cl := NewClient(ms, testutils.NewLogger(logger.Error, mt), conn)
+	cl := NewClient(ms, utils.NewLogger(logger.Error, mt), conn)
 
 	done := make(chan bool, 1)
 	go func() {
@@ -142,28 +144,28 @@ func Test_client_publishWillError(t *testing.T) {
 		Topic:   "some/will",
 		Message: []byte("will message")}, nil), rConn)
 
-	ca, ok := pkg.Parse(t, rConn).(*pkg.ConnAck)
-	testutils.CheckEqual(pkg.RtAccepted, ca.ReturnCode(), t)
-	testutils.CheckTrue(ok, t)
+	ca, ok := packet.Parse(t, rConn).(*pkg.ConnAck)
+	utils.CheckEqual(pkg.RtAccepted, ca.ReturnCode(), t)
+	utils.CheckTrue(ok, t)
 	_ = conn.Close()
 	<-done
 
 	// At least one error should be logged (additional caused by forced disconnect)
-	testutils.CheckTrue(len(mt.logEntries) > 0, t)
+	utils.CheckTrue(len(mt.logEntries) > 0, t)
 	el := mt.logEntries[0]
-	testutils.CheckEqual(len(el), 3, t)
-	testutils.CheckEqual(el[0], "ERROR", t)
-	testutils.CheckTrue(cl == el[1], t)
+	utils.CheckEqual(len(el), 3, t)
+	utils.CheckEqual(el[0], "ERROR", t)
+	utils.CheckTrue(cl == el[1], t)
 	err, ok := el[2].(error)
-	testutils.CheckTrue(ok, t)
-	testutils.CheckEqual("unauthorized", err.Error(), t)
+	utils.CheckTrue(ok, t)
+	utils.CheckEqual("unauthorized", err.Error(), t)
 }
 
 // Test_client_debugLog checks that the client performs debug logging
 func Test_client_debugLog(t *testing.T) {
 	mt := &collectLogsT{}
 	conn := mock.NewConnection()
-	cl := NewClient(newMockServer(t), testutils.NewLogger(logger.Debug, mt), conn)
+	cl := NewClient(newMockServer(t), utils.NewLogger(logger.Debug, mt), conn)
 
 	done := make(chan bool, 1)
 	go func() {
@@ -173,9 +175,9 @@ func Test_client_debugLog(t *testing.T) {
 
 	rConn := conn.Remote()
 	writePacket(t, pkg.NewConnect("client-id", false, 1, nil, nil), rConn)
-	ca, ok := pkg.Parse(t, rConn).(*pkg.ConnAck)
-	testutils.CheckTrue(ok, t)
-	testutils.CheckEqual(pkg.RtAccepted, ca.ReturnCode(), t)
+	ca, ok := packet.Parse(t, rConn).(*pkg.ConnAck)
+	utils.CheckTrue(ok, t)
+	utils.CheckEqual(pkg.RtAccepted, ca.ReturnCode(), t)
 	writePacket(t, pkg.PubRec(1), rConn)
 	writePacket(t, pkg.PubRel(2), rConn)
 	writePacket(t, pkg.PubComp(3), rConn)
@@ -192,7 +194,7 @@ func Test_client_debugLog(t *testing.T) {
 			}
 		}
 	}
-	testutils.CheckEqual(4, cnt, t)
+	utils.CheckEqual(4, cnt, t)
 }
 
 type writeFailure struct {
@@ -215,7 +217,7 @@ func (c *writeFailure) Write(bs []byte) (int, error) {
 func Test_write_failure_when_connected(t *testing.T) {
 	conn := &writeFailure{Connection: mock.NewConnection()}
 	mt := &collectLogsT{}
-	cl := NewClient(newMockServer(t), testutils.NewLogger(logger.Error, mt), conn)
+	cl := NewClient(newMockServer(t), utils.NewLogger(logger.Error, mt), conn)
 
 	done := make(chan bool, 1)
 	go func() {
@@ -232,21 +234,21 @@ func Test_write_failure_when_connected(t *testing.T) {
 	}
 
 	// At least one error should be logged (additional caused by forced disconnect)
-	testutils.CheckTrue(len(mt.logEntries) > 0, t)
+	utils.CheckTrue(len(mt.logEntries) > 0, t)
 	el := mt.logEntries[0]
-	testutils.CheckEqual(len(el), 3, t)
-	testutils.CheckEqual(el[0], "ERROR", t)
-	testutils.CheckTrue(cl == el[1], t)
+	utils.CheckEqual(len(el), 3, t)
+	utils.CheckEqual(el[0], "ERROR", t)
+	utils.CheckTrue(cl == el[1], t)
 	err, ok := el[2].(error)
-	testutils.CheckTrue(ok, t)
-	testutils.CheckEqual("write failed", err.Error(), t)
+	utils.CheckTrue(ok, t)
+	utils.CheckEqual("write failed", err.Error(), t)
 }
 
 // Test_write_failure_during_drain checks that the client logs error that occurs during writeLoop drain
 func Test_write_failure_during_drain(t *testing.T) {
 	conn := &writeFailure{Connection: mock.NewConnection(), succeed: 1, tick: make(chan bool, 1)}
 	mt := &collectLogsT{}
-	cl := NewClient(newMockServer(t), testutils.NewLogger(logger.Error, mt), conn)
+	cl := NewClient(newMockServer(t), utils.NewLogger(logger.Error, mt), conn)
 
 	done := make(chan bool, 1)
 	go func() {
@@ -269,12 +271,12 @@ func Test_write_failure_during_drain(t *testing.T) {
 	}
 
 	// At least one error should be logged (additional caused by forced disconnect)
-	testutils.CheckTrue(len(mt.logEntries) > 0, t)
+	utils.CheckTrue(len(mt.logEntries) > 0, t)
 	el := mt.logEntries[0]
-	testutils.CheckEqual(len(el), 3, t)
-	testutils.CheckEqual(el[0], "ERROR", t)
-	testutils.CheckTrue(cl == el[1], t)
+	utils.CheckEqual(len(el), 3, t)
+	utils.CheckEqual(el[0], "ERROR", t)
+	utils.CheckTrue(cl == el[1], t)
 	err, ok := el[2].(error)
-	testutils.CheckTrue(ok, t)
-	testutils.CheckEqual("write failed", err.Error(), t)
+	utils.CheckTrue(ok, t)
+	utils.CheckEqual("write failed", err.Error(), t)
 }

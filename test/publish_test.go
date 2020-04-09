@@ -7,124 +7,125 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
+	"github.com/tada/mqtt-nats/test/full"
 )
 
 func TestPublishSubscribe(t *testing.T) {
 	topic := "testing/some/topic"
 	pp := pkg.SimplePublish(topic, []byte("payload"))
 	gotIt := make(chan bool, 1)
-	c1 := mqttConnectClean(t, mqttPort)
-	mid := nextPacketID()
-	mqttSend(t, c1, pkg.NewSubscribe(mid, pkg.Topic{Name: topic}))
-	mqttExpect(t, c1, pkg.NewSubAck(mid, 0))
+	c1 := full.MqttConnectClean(t, mqttPort)
+	mid := full.NextPacketID()
+	full.MqttSend(t, c1, pkg.NewSubscribe(mid, pkg.Topic{Name: topic}))
+	full.MqttExpect(t, c1, pkg.NewSubAck(mid, 0))
 	go func() {
-		mqttExpect(t, c1, pp)
+		full.MqttExpect(t, c1, pp)
 		gotIt <- true
-		mqttDisconnect(t, c1)
+		full.MqttDisconnect(t, c1)
 	}()
 
-	c2 := mqttConnectClean(t, mqttPort)
-	mqttSend(t, c2, pp)
-	mqttDisconnect(t, c2)
-	assertMessageReceived(t, gotIt)
+	c2 := full.MqttConnectClean(t, mqttPort)
+	full.MqttSend(t, c2, pp)
+	full.MqttDisconnect(t, c2)
+	full.AssertMessageReceived(t, gotIt)
 }
 
 func TestPublishSubscribe_qos_1(t *testing.T) {
 	topic := "testing/some/topic"
-	mid := nextPacketID()
+	mid := full.NextPacketID()
 	pp := pkg.NewPublish2(mid, topic, []byte("payload"), 1, false, false)
-	c1 := mqttConnectClean(t, mqttPort)
+	c1 := full.MqttConnectClean(t, mqttPort)
 	gotIt := make(chan bool, 1)
 	go func() {
-		sid := nextPacketID()
-		mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 1}))
-		mqttExpect(t, c1, pkg.NewSubAck(sid, 1), pp)
-		mqttSend(t, c1, pkg.PubAck(mid))
-		mqttDisconnect(t, c1)
+		sid := full.NextPacketID()
+		full.MqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 1}))
+		full.MqttExpect(t, c1, pkg.NewSubAck(sid, 1), pp)
+		full.MqttSend(t, c1, pkg.PubAck(mid))
+		full.MqttDisconnect(t, c1)
 		gotIt <- true
 	}()
 
-	c2 := mqttConnectClean(t, mqttPort)
-	mqttSend(t, c2, pp)
-	mqttExpect(t, c2, pkg.PubAck(mid))
-	mqttDisconnect(t, c2)
-	assertMessageReceived(t, gotIt)
+	c2 := full.MqttConnectClean(t, mqttPort)
+	full.MqttSend(t, c2, pp)
+	full.MqttExpect(t, c2, pkg.PubAck(mid))
+	full.MqttDisconnect(t, c2)
+	full.AssertMessageReceived(t, gotIt)
 }
 
 func TestPublishSubscribe_qos_2(t *testing.T) {
 	topic := "testing/some/topic"
-	mid := nextPacketID()
+	mid := full.NextPacketID()
 	pp := pkg.NewPublish2(mid, topic, []byte("payload"), 1, false, false)
-	c1 := mqttConnectClean(t, mqttPort)
+	c1 := full.MqttConnectClean(t, mqttPort)
 	gotIt := make(chan bool, 1)
 	go func() {
-		sid := nextPacketID()
-		mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 2}))
-		mqttExpect(t, c1, pkg.NewSubAck(sid, 1), pp)
-		mqttSend(t, c1, pkg.PubAck(mid))
-		mqttDisconnect(t, c1)
+		sid := full.NextPacketID()
+		full.MqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 2}))
+		full.MqttExpect(t, c1, pkg.NewSubAck(sid, 1), pp)
+		full.MqttSend(t, c1, pkg.PubAck(mid))
+		full.MqttDisconnect(t, c1)
 		gotIt <- true
 	}()
 
-	c2 := mqttConnectClean(t, mqttPort)
-	mqttSend(t, c2, pp)
-	mqttExpect(t, c2, pkg.PubAck(mid))
-	mqttDisconnect(t, c2)
-	assertMessageReceived(t, gotIt)
+	c2 := full.MqttConnectClean(t, mqttPort)
+	full.MqttSend(t, c2, pp)
+	full.MqttExpect(t, c2, pkg.PubAck(mid))
+	full.MqttDisconnect(t, c2)
+	full.AssertMessageReceived(t, gotIt)
 }
 
 func TestPublishSubscribe_qos_1_restart(t *testing.T) {
 	topic := "testing/some/topic"
-	mid := nextPacketID()
+	mid := full.NextPacketID()
 	pp := pkg.NewPublish2(mid, topic, []byte("payload"), 1, false, false)
 
-	c1ID := nextClientID()
-	c1 := mqttConnect(t, mqttPort)
+	c1ID := full.NextClientID()
+	c1 := full.MqttConnect(t, mqttPort)
 	gotIt := make(chan bool, 1)
 	go func() {
-		mqttSend(t, c1, pkg.NewConnect(c1ID, false, 1, nil, nil))
-		mqttExpect(t, c1, pkg.NewConnAck(false, 0))
+		full.MqttSend(t, c1, pkg.NewConnect(c1ID, false, 1, nil, nil))
+		full.MqttExpect(t, c1, pkg.NewConnAck(false, 0))
 
-		sid := nextPacketID()
-		mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 1}))
-		mqttExpect(t, c1, pkg.NewSubAck(sid, 1))
+		sid := full.NextPacketID()
+		full.MqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 1}))
+		full.MqttExpect(t, c1, pkg.NewSubAck(sid, 1))
 		gotIt <- true
-		mqttExpect(t, c1, pp)
+		full.MqttExpect(t, c1, pp)
 		gotIt <- true
 	}()
 
-	c2ID := nextClientID()
-	c2 := mqttConnect(t, mqttPort)
-	mqttSend(t, c2, pkg.NewConnect(c2ID, false, 1, nil, nil))
-	mqttExpect(t, c2, pkg.NewConnAck(false, 0))
-	assertMessageReceived(t, gotIt)
-	mqttSend(t, c2, pp)
-	assertMessageReceived(t, gotIt)
+	c2ID := full.NextClientID()
+	c2 := full.MqttConnect(t, mqttPort)
+	full.MqttSend(t, c2, pkg.NewConnect(c2ID, false, 1, nil, nil))
+	full.MqttExpect(t, c2, pkg.NewConnAck(false, 0))
+	full.AssertMessageReceived(t, gotIt)
+	full.MqttSend(t, c2, pp)
+	full.AssertMessageReceived(t, gotIt)
 
-	RestartBridge(t, mqttServer)
+	full.RestartBridge(t, mqttServer)
 
 	// client c1 reestablishes session and sends outstanding ack
-	c1 = mqttConnect(t, mqttPort)
-	mqttSend(t, c1, pkg.NewConnect(c1ID, false, 1, nil, nil))
-	mqttExpect(t, c1, pkg.NewConnAck(true, 0))
+	c1 = full.MqttConnect(t, mqttPort)
+	full.MqttSend(t, c1, pkg.NewConnect(c1ID, false, 1, nil, nil))
+	full.MqttExpect(t, c1, pkg.NewConnAck(true, 0))
 
 	// client c2 reestablishes session and receives outstanding ack
-	c2 = mqttConnect(t, mqttPort)
-	mqttSend(t, c2, pkg.NewConnect(c2ID, false, 1, nil, nil))
-	mqttExpect(t, c2, pkg.NewConnAck(true, 0))
+	c2 = full.MqttConnect(t, mqttPort)
+	full.MqttSend(t, c2, pkg.NewConnect(c2ID, false, 1, nil, nil))
+	full.MqttExpect(t, c2, pkg.NewConnAck(true, 0))
 
-	mqttSend(t, c1, pkg.PubAck(mid))
-	mqttExpect(t, c2, pkg.PubAck(mid))
+	full.MqttSend(t, c1, pkg.PubAck(mid))
+	full.MqttExpect(t, c2, pkg.PubAck(mid))
 
-	mqttDisconnect(t, c1)
-	mqttDisconnect(t, c2)
+	full.MqttDisconnect(t, c1)
+	full.MqttDisconnect(t, c2)
 }
 
 func TestMqttPublishNatsSubscribe(t *testing.T) {
 	pl := []byte("payload")
 	pp := pkg.SimplePublish("testing/s.o.m.e/topic", pl)
 	gotIt := make(chan bool, 1)
-	nc := natsConnect(t, natsPort)
+	nc := full.NatsConnect(t, natsPort)
 	defer nc.Close()
 
 	_, err := nc.Subscribe("testing.s/o/m/e.>", func(m *nats.Msg) {
@@ -137,10 +138,10 @@ func TestMqttPublishNatsSubscribe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c2 := mqttConnectClean(t, mqttPort)
-	mqttSend(t, c2, pp)
-	mqttDisconnect(t, c2)
-	assertMessageReceived(t, gotIt)
+	c2 := full.MqttConnectClean(t, mqttPort)
+	full.MqttSend(t, c2, pp)
+	full.MqttDisconnect(t, c2)
+	full.AssertMessageReceived(t, gotIt)
 }
 
 func TestNatsPublishMqttSubscribe(t *testing.T) {
@@ -148,50 +149,50 @@ func TestNatsPublishMqttSubscribe(t *testing.T) {
 	pl := []byte("payload")
 	pp := pkg.SimplePublish(topic, pl)
 
-	c1 := mqttConnectClean(t, mqttPort)
-	sid := nextPacketID()
-	mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: "testing/+/topic"}))
-	mqttExpect(t, c1, pkg.NewSubAck(sid, 0))
+	c1 := full.MqttConnectClean(t, mqttPort)
+	sid := full.NextPacketID()
+	full.MqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: "testing/+/topic"}))
+	full.MqttExpect(t, c1, pkg.NewSubAck(sid, 0))
 
 	gotIt := make(chan bool, 1)
 	go func() {
-		mqttExpect(t, c1, pp)
-		mqttDisconnect(t, c1)
+		full.MqttExpect(t, c1, pp)
+		full.MqttDisconnect(t, c1)
 		gotIt <- true
 	}()
 
-	nc := natsConnect(t, natsPort)
+	nc := full.NatsConnect(t, natsPort)
 	defer nc.Close()
 	err := nc.Publish("testing.some.topic", pl)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertMessageReceived(t, gotIt)
+	full.AssertMessageReceived(t, gotIt)
 }
 
 func TestNatsPublishMqttSubscribe_qos_1(t *testing.T) {
 	topic := "testing/some/topic"
 	pl := []byte("payload")
 
-	c1 := mqttConnectClean(t, mqttPort)
-	sid := nextPacketID()
-	mqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 1}))
-	mqttExpect(t, c1, pkg.NewSubAck(sid, 1))
+	c1 := full.MqttConnectClean(t, mqttPort)
+	sid := full.NextPacketID()
+	full.MqttSend(t, c1, pkg.NewSubscribe(sid, pkg.Topic{Name: topic, QoS: 1}))
+	full.MqttExpect(t, c1, pkg.NewSubAck(sid, 1))
 
 	gotIt := make(chan bool, 1)
 	go func() {
-		mqttExpect(t, c1, func(p pkg.Packet) bool {
+		full.MqttExpect(t, c1, func(p pkg.Packet) bool {
 			if pp, ok := p.(*pkg.Publish); ok {
-				mqttSend(t, c1, pkg.PubAck(pp.ID()))
+				full.MqttSend(t, c1, pkg.PubAck(pp.ID()))
 				return pp.TopicName() == topic && bytes.Equal(pp.Payload(), pl) && pp.QoSLevel() == 1
 			}
 			return false
 		})
-		mqttDisconnect(t, c1)
+		full.MqttDisconnect(t, c1)
 		gotIt <- true
 	}()
 
-	nc := natsConnect(t, natsPort)
+	nc := full.NatsConnect(t, natsPort)
 	defer nc.Close()
 	_, err := nc.Request("testing.some.topic", pl, 10*time.Millisecond)
 	if err != nil {
@@ -203,44 +204,44 @@ func TestUnubscribe(t *testing.T) {
 	topic := "testing/some/topic"
 	pp := pkg.SimplePublish(topic, []byte("payload"))
 	gotIt := make(chan bool, 1)
-	c1 := mqttConnectClean(t, mqttPort)
-	mid := nextPacketID()
-	mqttSend(t, c1, pkg.NewSubscribe(mid, pkg.Topic{Name: topic}))
-	mqttExpect(t, c1, pkg.NewSubAck(mid, 0))
+	c1 := full.MqttConnectClean(t, mqttPort)
+	mid := full.NextPacketID()
+	full.MqttSend(t, c1, pkg.NewSubscribe(mid, pkg.Topic{Name: topic}))
+	full.MqttExpect(t, c1, pkg.NewSubAck(mid, 0))
 	go func() {
-		mqttExpect(t, c1, pp)
+		full.MqttExpect(t, c1, pp)
 
-		uid := nextPacketID()
-		mqttSend(t, c1, pkg.NewUnsubscribe(uid, topic))
-		mqttExpect(t, c1, pkg.UnsubAck(uid))
+		uid := full.NextPacketID()
+		full.MqttSend(t, c1, pkg.NewUnsubscribe(uid, topic))
+		full.MqttExpect(t, c1, pkg.UnsubAck(uid))
 		gotIt <- true
-		mqttExpectConnClosed(t, c1)
+		full.MqttExpectConnClosed(t, c1)
 		gotIt <- true
 	}()
 
-	c2 := mqttConnectClean(t, mqttPort)
-	mqttSend(t, c2, pp)
+	c2 := full.MqttConnectClean(t, mqttPort)
+	full.MqttSend(t, c2, pp)
 
 	// wait for subscriber to consume and unsubscribe
-	assertMessageReceived(t, gotIt)
+	full.AssertMessageReceived(t, gotIt)
 
 	// send again, this should not reach subscriber
-	mqttSend(t, c2, pp)
-	mqttDisconnect(t, c2)
-	assertTimeout(t, gotIt)
-	mqttDisconnect(t, c1)
+	full.MqttSend(t, c2, pp)
+	full.MqttDisconnect(t, c2)
+	full.AssertTimeout(t, gotIt)
+	full.MqttDisconnect(t, c1)
 }
 
 func TestPublish_qos_2(t *testing.T) {
-	conn := mqttConnectClean(t, mqttPort)
-	mqttSend(t, conn, pkg.NewPublish2(
-		nextPacketID(), "testing/some/topic", []byte("payload"), 2, false, false))
-	mqttExpectConnReset(t, conn)
+	conn := full.MqttConnectClean(t, mqttPort)
+	full.MqttSend(t, conn, pkg.NewPublish2(
+		full.NextPacketID(), "testing/some/topic", []byte("payload"), 2, false, false))
+	full.MqttExpectConnReset(t, conn)
 }
 
 func TestPublish_qos_3(t *testing.T) {
-	conn := mqttConnectClean(t, mqttPort)
-	mqttSend(t, conn, pkg.NewPublish2(
-		nextPacketID(), "testing/some/topic", []byte("payload"), 3, false, false))
-	mqttExpectConnReset(t, conn)
+	conn := full.MqttConnectClean(t, mqttPort)
+	full.MqttSend(t, conn, pkg.NewPublish2(
+		full.NextPacketID(), "testing/some/topic", []byte("payload"), 3, false, false))
+	full.MqttExpectConnReset(t, conn)
 }

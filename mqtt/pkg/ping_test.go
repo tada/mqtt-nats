@@ -1,13 +1,15 @@
-package pkg
+package pkg_test
 
 import (
 	"testing"
+
+	"github.com/tada/mqtt-nats/mqtt/pkg"
 )
 
 func TestParsePingReq(t *testing.T) {
-	writeReadAndCompare(t, PingRequestSingleton, "PINGREQ")
+	writeReadAndCompare(t, pkg.PingRequestSingleton, "PINGREQ")
 }
 
 func TestParsePingResp(t *testing.T) {
-	writeReadAndCompare(t, PingResponseSingleton, "PINGRESP")
+	writeReadAndCompare(t, pkg.PingResponseSingleton, "PINGRESP")
 }

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestLogger(t *testing.T) {
+func TestLogger_New(t *testing.T) {
 	l := New(Silent, nil, nil)
 	if _, ok := l.(silent); !ok {
 		t.Error("silent leven did not result in silent logger")

@@ -1,6 +1,6 @@
 // +build citest
 
-package test
+package full
 
 import (
 	"io"
@@ -12,14 +12,15 @@ import (
 	"github.com/nats-io/nuid"
 	"github.com/tada/mqtt-nats/mqtt"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
+	"github.com/tada/mqtt-nats/test/packet"
 )
 
-func nextClientID() string {
+func NextClientID() string {
 	return "testclient-" + nuid.Next()
 }
 
 // mqttConnect establishes a tcp connection to the given port on the default host
-func mqttConnect(t *testing.T, port int) net.Conn {
+func MqttConnect(t *testing.T, port int) net.Conn {
 	t.Helper()
 	conn, err := net.Dial("tcp", ":"+strconv.Itoa(port))
 	if err != nil {
@@ -30,15 +31,15 @@ func mqttConnect(t *testing.T, port int) net.Conn {
 
 // mqttConnectClean establishes a tcp connection to the given port on the default host, sends the
 // initial connect packet for a clean session and awaits the CONNACK.
-func mqttConnectClean(t *testing.T, port int) net.Conn {
-	conn := mqttConnect(t, port)
-	mqttSend(t, conn, pkg.NewConnect(nextClientID(), true, 1, nil, nil))
-	mqttExpect(t, conn, pkg.NewConnAck(false, 0))
+func MqttConnectClean(t *testing.T, port int) net.Conn {
+	conn := MqttConnect(t, port)
+	MqttSend(t, conn, pkg.NewConnect(NextClientID(), true, 1, nil, nil))
+	MqttExpect(t, conn, pkg.NewConnAck(false, 0))
 	return conn
 }
 
 // mqttDisconnect sends a disconnect packet and closes the connection
-func mqttDisconnect(t *testing.T, conn io.WriteCloser) {
+func MqttDisconnect(t *testing.T, conn io.WriteCloser) {
 	t.Helper()
 	defer func() {
 		if err := conn.Close(); err != nil {
@@ -54,7 +55,7 @@ func mqttDisconnect(t *testing.T, conn io.WriteCloser) {
 }
 
 // mqttSend writes the given packets on the given connection
-func mqttSend(t *testing.T, conn io.Writer, send ...pkg.Packet) {
+func MqttSend(t *testing.T, conn io.Writer, send ...pkg.Packet) {
 	t.Helper()
 	buf := mqtt.NewWriter()
 	for i := range send {
@@ -68,10 +69,10 @@ func mqttSend(t *testing.T, conn io.Writer, send ...pkg.Packet) {
 
 // mqttExpect will read one packet for each entry in the list of expectations and assert that it is matched
 // by that entry. An expectation is either an expected verbatim pkg.Packet or a PacketMatcher function.
-func mqttExpect(t *testing.T, conn io.Reader, expectations ...interface{}) {
+func MqttExpect(t *testing.T, conn io.Reader, expectations ...interface{}) {
 	t.Helper()
 	for _, e := range expectations {
-		a := pkg.Parse(t, conn)
+		a := packet.Parse(t, conn)
 		switch e := e.(type) {
 		case pkg.Packet:
 			if !e.Equals(a) {
@@ -88,7 +89,7 @@ func mqttExpect(t *testing.T, conn io.Reader, expectations ...interface{}) {
 }
 
 // mqttExpectConnReset will make a read attempt and expect that it fails with an error
-func mqttExpectConnReset(t *testing.T, conn net.Conn) {
+func MqttExpectConnReset(t *testing.T, conn net.Conn) {
 	t.Helper()
 	_, err := conn.Read([]byte{0})
 	if err != nil {
@@ -106,7 +107,7 @@ func mqttExpectConnReset(t *testing.T, conn net.Conn) {
 }
 
 // mqttExpectConnReset will make a read attempt and expect that it fails with an error
-func mqttExpectConnClosed(t *testing.T, conn net.Conn) {
+func MqttExpectConnClosed(t *testing.T, conn net.Conn) {
 	t.Helper()
 	_, err := conn.Read([]byte{0})
 	if err != nil && strings.Contains(err.Error(), "closed") {
@@ -117,6 +118,6 @@ func mqttExpectConnClosed(t *testing.T, conn net.Conn) {
 
 var packetIDManager = pkg.NewIDManager()
 
-func nextPacketID() uint16 {
+func NextPacketID() uint16 {
 	return packetIDManager.NextFreePacketID()
 }
