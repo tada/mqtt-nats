@@ -62,8 +62,8 @@ func (u *Unsubscribe) Write(w *mqtt.Writer) {
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (u *Unsubscribe) Equals(p Packet) bool {
-	if os, ok := p.(*Unsubscribe); ok && u.id == os.id && len(u.topics) == len(os.topics) {
+func (u *Unsubscribe) Equals(other interface{}) bool {
+	if os, ok := other.(*Unsubscribe); ok && u.id == os.id && len(u.topics) == len(os.topics) {
 		for i := range u.topics {
 			if u.topics[i] != os.topics[i] {
 				return false
@@ -119,7 +119,7 @@ func (u UnsubAck) ID() uint16 {
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (u UnsubAck) Equals(other Packet) bool {
+func (u UnsubAck) Equals(other interface{}) bool {
 	return u == other
 }
 

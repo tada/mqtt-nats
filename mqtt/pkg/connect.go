@@ -174,8 +174,8 @@ func ParseConnect(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (c *Connect) Equals(p Packet) bool {
-	oc, ok := p.(*Connect)
+func (c *Connect) Equals(other interface{}) bool {
+	oc, ok := other.(*Connect)
 	return ok &&
 		c.keepAlive == oc.keepAlive &&
 		c.clientLevel == oc.clientLevel &&
@@ -318,8 +318,8 @@ func ParseConnAck(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (a *ConnAck) Equals(p Packet) bool {
-	ac, ok := p.(*ConnAck)
+func (a *ConnAck) Equals(other interface{}) bool {
+	ac, ok := other.(*ConnAck)
 	return ok && *a == *ac
 }
 
@@ -348,8 +348,8 @@ type Disconnect int
 const DisconnectSingleton = Disconnect(0)
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (Disconnect) Equals(p Packet) bool {
-	return p == DisconnectSingleton
+func (Disconnect) Equals(other interface{}) bool {
+	return other == DisconnectSingleton
 }
 
 // String returns a brief string representation of the packet. Suitable for logging

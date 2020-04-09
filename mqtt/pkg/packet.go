@@ -53,7 +53,7 @@ const (
 // The Packet interface is implemented by all MQTT packet types
 type Packet interface {
 	// Equals returns true if this packet is equal to the given packet, false if not
-	Equals(other Packet) bool
+	Equals(other interface{}) bool
 
 	// Write writes the MQTT bits of this packet on the given Writer
 	Write(w *mqtt.Writer)

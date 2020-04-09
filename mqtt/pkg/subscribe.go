@@ -68,8 +68,8 @@ func (s *Subscribe) ID() uint16 {
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (s *Subscribe) Equals(p Packet) bool {
-	if os, ok := p.(*Subscribe); ok && s.id == os.id && len(s.topics) == len(os.topics) {
+func (s *Subscribe) Equals(other interface{}) bool {
+	if os, ok := other.(*Subscribe); ok && s.id == os.id && len(s.topics) == len(os.topics) {
 		for i := range s.topics {
 			if s.topics[i] != os.topics[i] {
 				return false
@@ -159,8 +159,8 @@ func ParseSubAck(r *mqtt.Reader, b byte, pkLen int) (Packet, error) {
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (s *SubAck) Equals(p Packet) bool {
-	os, ok := p.(*SubAck)
+func (s *SubAck) Equals(other interface{}) bool {
+	os, ok := other.(*SubAck)
 	return ok && s.id == os.id && bytes.Equal(s.topicReturns, os.topicReturns)
 }
 

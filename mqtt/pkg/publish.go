@@ -90,7 +90,7 @@ func ParsePublish(r *mqtt.Reader, flags byte, pkLen int) (Packet, error) {
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (p *Publish) Equals(other Packet) bool {
+func (p *Publish) Equals(other interface{}) bool {
 	op, ok := other.(*Publish)
 	return ok &&
 		p.id == op.id &&
@@ -261,7 +261,7 @@ func ParsePubAck(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (p PubAck) Equals(other Packet) bool {
+func (p PubAck) Equals(other interface{}) bool {
 	return p == other
 }
 
@@ -295,7 +295,7 @@ func ParsePubRec(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (p PubRec) Equals(other Packet) bool {
+func (p PubRec) Equals(other interface{}) bool {
 	return p == other
 }
 
@@ -329,7 +329,7 @@ func ParsePubRel(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (p PubRel) Equals(other Packet) bool {
+func (p PubRel) Equals(other interface{}) bool {
 	return p == other
 }
 
@@ -363,7 +363,7 @@ func ParsePubComp(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 }
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (p PubComp) Equals(other Packet) bool {
+func (p PubComp) Equals(other interface{}) bool {
 	return p == other
 }
 

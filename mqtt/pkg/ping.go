@@ -9,8 +9,8 @@ type PingRequest int
 const PingRequestSingleton = PingRequest(0)
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (PingRequest) Equals(p Packet) bool {
-	return p == PingRequestSingleton
+func (PingRequest) Equals(other interface{}) bool {
+	return other == PingRequestSingleton
 }
 
 // String returns a brief string representation of the packet. Suitable for logging
@@ -31,8 +31,8 @@ type PingResponse int
 const PingResponseSingleton = PingResponse(0)
 
 // Equals returns true if this packet is equal to the given packet, false if not
-func (PingResponse) Equals(p Packet) bool {
-	return p == PingResponseSingleton
+func (PingResponse) Equals(other interface{}) bool {
+	return other == PingResponseSingleton
 }
 
 // String returns a brief string representation of the packet. Suitable for logging
