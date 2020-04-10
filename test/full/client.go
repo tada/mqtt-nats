@@ -111,7 +111,7 @@ func MqttExpectConnReset(t *testing.T, conn net.Conn) {
 func MqttExpectConnClosed(t *testing.T, conn net.Conn) {
 	t.Helper()
 	_, err := conn.Read([]byte{0})
-	if err != nil && strings.Contains(err.Error(), "closed") {
+	if err != nil && err == io.EOF || strings.Contains(err.Error(), "closed") {
 		return
 	}
 	t.Fatalf("connection is not closed: %v", err)
