@@ -11,6 +11,8 @@ import (
 	"github.com/tada/mqtt-nats/logger"
 )
 
+// Bridge parses the command line arguments of args into an bridge.Options instance and then starts the
+// bridge with those options.
 func Bridge(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet(args[0], flag.ExitOnError)
 	fs.SetOutput(stderr)
