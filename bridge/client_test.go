@@ -113,6 +113,41 @@ func Test_client_natsConnError(t *testing.T) {
 	utils.CheckEqual(pkg.RtServerUnavailable, ca.ReturnCode(), t)
 }
 
+// Test_client_natsConnError tests that the server responds with a ConnAck containing
+// an pkg.RtServerUnavailable when the client was unable to establish a NATS connection.
+func Test_client_natsSubscribeError(t *testing.T) {
+	mt := &collectLogsT{}
+	conn := mock.NewConnection()
+	ms := newMockServer(t)
+	ms.ncError = nil
+	ms.nc = &nats.Conn{}
+	cl := NewClient(ms, utils.NewLogger(logger.Error, mt), conn)
+	go cl.Serve()
+
+	rConn := conn.Remote()
+	writePacket(t, pkg.NewConnect("client-id", true, 1, nil, nil), rConn)
+	ca, ok := packet.Parse(t, rConn).(*pkg.ConnAck)
+	utils.CheckTrue(ok, t)
+	utils.CheckEqual(pkg.RtAccepted, ca.ReturnCode(), t)
+
+	// Newline is unacceptable in a subject
+	writePacket(t, pkg.NewSubscribe(1, pkg.Topic{Name: "top\nic"}), rConn)
+	sa, ok := packet.Parse(t, rConn).(*pkg.SubAck)
+	utils.CheckTrue(ok, t)
+
+	// Topic return code should be 0x80 to indicate failure
+	utils.CheckEqual(pkg.NewSubAck(1, 0x80), sa, t)
+
+	// At least one error should be logged (additional caused by forced disconnect)
+	utils.CheckTrue(len(mt.logEntries) > 0, t)
+	el := mt.logEntries[0]
+	utils.CheckEqual(5, len(el), t)
+	utils.CheckEqual(el[0], "ERROR", t)
+	utils.CheckTrue(cl == el[1], t)
+	utils.CheckEqual("NATS subscribe", el[2], t)
+	utils.CheckEqual("top\nic", el[3], t)
+}
+
 type collectLogsT struct {
 	logEntries [][]interface{}
 }
