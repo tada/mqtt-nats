@@ -10,11 +10,13 @@ import (
 	"github.com/tada/mqtt-nats/pio"
 )
 
+// Credentials are user credentials that originates from an MQTT CONNECT packet.
 type Credentials struct {
 	User     string
 	Password []byte
 }
 
+// MarshalToJSON streams the JSON encoded form of this instance onto the given io.Writer
 func (c *Credentials) MarshalToJSON(w io.Writer) {
 	pio.WriteByte('{', w)
 	if c.User != "" {
@@ -31,6 +33,8 @@ func (c *Credentials) MarshalToJSON(w io.Writer) {
 	pio.WriteByte('}', w)
 }
 
+// UnmarshalFromJSON initializes this instance from the tokens stream provided by the json.Decoder. The
+// first token has already been read and is passed as an argument.
 func (c *Credentials) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 	jsonstream.AssertDelimToken(t, '{')
 	for {

@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 		RetainedRequestTopic: retainedRequestTopic,
 		StoragePath:          storageFile}
 	var err error
-	mqttServer, err = full.RunBridgeOnPorts(lg, &opts)
+	mqttServer, err = full.RunBridge(lg, &opts)
 
 	var code int
 	if err == nil {

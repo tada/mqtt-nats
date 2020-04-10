@@ -260,6 +260,7 @@ func (s *session) Destroy() {
 	s.awaitsAckLock.Unlock()
 }
 
+// A SessionManager manages sessions.
 type SessionManager interface {
 	// Create creates a new session for the given clientID. Any previous session registered for
 	// the given id is discarded

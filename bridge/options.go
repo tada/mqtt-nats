@@ -6,6 +6,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+// Options contains all configuration options for the mqtt-nats bridge.
 type Options struct {
 	// Path to file where the bridge is persisted. Can be empty if no persistence is desired
 	StoragePath string

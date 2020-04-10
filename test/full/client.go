@@ -15,6 +15,7 @@ import (
 	"github.com/tada/mqtt-nats/test/packet"
 )
 
+// NextClientID returns a new unique client ID with the prefix "testclient-"
 func NextClientID() string {
 	return "testclient-" + nuid.Next()
 }
@@ -114,10 +115,4 @@ func MqttExpectConnClosed(t *testing.T, conn net.Conn) {
 		return
 	}
 	t.Fatalf("connection is not closed: %v", err)
-}
-
-var packetIDManager = pkg.NewIDManager()
-
-func NextPacketID() uint16 {
-	return packetIDManager.NextFreePacketID()
 }

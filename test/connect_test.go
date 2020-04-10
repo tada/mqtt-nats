@@ -9,6 +9,12 @@ import (
 	"github.com/tada/mqtt-nats/test/full"
 )
 
+var packetIDManager = pkg.NewIDManager()
+
+func nextPacketID() uint16 {
+	return packetIDManager.NextFreePacketID()
+}
+
 func TestConnect(t *testing.T) {
 	conn := full.MqttConnect(t, mqttPort)
 	full.MqttSend(t, conn, pkg.NewConnect(full.NextClientID(), true, 1, nil, nil))
@@ -33,7 +39,7 @@ func TestConnect_will_qos_0(t *testing.T) {
 	conn1 := full.MqttConnect(t, mqttPort)
 	full.MqttSend(t, conn1, pkg.NewConnect(full.NextClientID(), true, 1, nil, nil))
 	full.MqttExpect(t, conn1, pkg.NewConnAck(false, 0))
-	mid := full.NextPacketID()
+	mid := nextPacketID()
 	full.MqttSend(t, conn1, pkg.NewSubscribe(mid, pkg.Topic{Name: "testing/my/will"}))
 	full.MqttExpect(t, conn1, pkg.NewSubAck(mid, 0))
 
@@ -70,7 +76,7 @@ func TestConnect_will_qos_1(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	conn = full.MqttConnectClean(t, mqttPort)
-	mid := full.NextPacketID()
+	mid := nextPacketID()
 	full.MqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: "testing/my/will", QoS: 1}))
 	full.MqttExpect(t, conn,
 		pkg.NewSubAck(mid, 1),
@@ -101,7 +107,7 @@ func TestConnect_will_retain_qos_0(t *testing.T) {
 	gotIt := make(chan bool, 1)
 	go func() {
 		c2 := full.MqttConnectClean(t, mqttPort)
-		mid := full.NextPacketID()
+		mid := nextPacketID()
 		full.MqttSend(t, c2, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic}))
 		full.MqttExpect(t, c2, pkg.NewSubAck(mid, 0))
 		full.MqttExpect(t, c2, func(p pkg.Packet) bool {
@@ -116,7 +122,7 @@ func TestConnect_will_retain_qos_0(t *testing.T) {
 
 	// check that retained will still exists
 	c1 = full.MqttConnectClean(t, mqttPort)
-	mid := full.NextPacketID()
+	mid := nextPacketID()
 	full.MqttSend(t, c1, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic}))
 	full.MqttExpect(t, c1,
 		pkg.NewSubAck(mid, 0),
@@ -145,7 +151,7 @@ func TestConnect_will_retain_qos_1(t *testing.T) {
 	_ = conn.Close()
 
 	conn = full.MqttConnectClean(t, mqttPort)
-	mid := full.NextPacketID()
+	mid := nextPacketID()
 	full.MqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
 	var ackID uint16
 	full.MqttExpect(t, conn,
@@ -161,7 +167,7 @@ func TestConnect_will_retain_qos_1(t *testing.T) {
 	full.MqttDisconnect(t, conn)
 
 	conn = full.MqttConnectClean(t, mqttPort)
-	mid = full.NextPacketID()
+	mid = nextPacketID()
 	full.MqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
 	full.MqttExpect(t, conn,
 		pkg.NewSubAck(mid, 1),
@@ -195,7 +201,7 @@ func TestConnect_will_retain_qos_1_restart(t *testing.T) {
 	time.Sleep(50 * time.Millisecond) // give bridge time to publish will
 
 	conn = full.MqttConnectClean(t, mqttPort)
-	mid := full.NextPacketID()
+	mid := nextPacketID()
 	full.MqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
 	full.MqttExpect(t, conn, pkg.NewSubAck(mid, 1))
 
@@ -211,7 +217,7 @@ func TestConnect_will_retain_qos_1_restart(t *testing.T) {
 	full.RestartBridge(t, mqttServer)
 
 	conn = full.MqttConnectClean(t, mqttPort)
-	mid = full.NextPacketID()
+	mid = nextPacketID()
 	full.MqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
 	full.MqttExpect(t, conn, pkg.NewSubAck(mid, 1))
 	full.MqttExpect(t, conn,
@@ -248,7 +254,7 @@ func TestConnect_will_qos_1_restart(t *testing.T) {
 	full.RestartBridge(t, mqttServer)
 
 	conn = full.MqttConnectClean(t, mqttPort)
-	mid := full.NextPacketID()
+	mid := nextPacketID()
 	full.MqttSend(t, conn, pkg.NewSubscribe(mid, pkg.Topic{Name: willTopic, QoS: 1}))
 	var ackID uint16
 	full.MqttExpect(t, conn,

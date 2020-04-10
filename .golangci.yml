@@ -7,10 +7,12 @@ issues:
   exclude-rules:
     - path: _test\.go
       linters:
-        - funlen
-        - goconst
-        - lll
+        - const
         - dupl
+        - gochecknoglobals
+        - goconst
+        - golint
+        - unparam
 
 linters-settings:
   gocyclo:
@@ -36,12 +38,15 @@ linters:
     - dogsled
     - dupl
     - errcheck
+    - gochecknoglobals
+    - gochecknoinits
     - gocognit
     - goconst
     - gocritic
     - gocyclo
     - gofmt
     - goimports
+    - golint
     - gosimple
     - govet
     - ineffassign
@@ -53,19 +58,16 @@ linters:
     - prealloc
     - scopelint
     - structcheck
+    - staticcheck
     - stylecheck
     - typecheck
     - unconvert
     - unused
     - varcheck
     - whitespace
+    - unparam
 
   # don't enable:
   # - funlen
-  # - gochecknoglobals
-  # - gochecknoinits
-  # - golint for now, since code isn't fully commented yet
   # - godox
   # - gosec
-  # - staticcheck
-  # - unparam

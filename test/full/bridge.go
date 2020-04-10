@@ -15,7 +15,8 @@ import (
 	"github.com/tada/mqtt-nats/logger"
 )
 
-func RunBridgeOnPorts(lg logger.Logger, opts *bridge.Options) (bridge.Bridge, error) {
+// RunBridge starts an in-process mqtt-nats bridge configured with the given options.
+func RunBridge(lg logger.Logger, opts *bridge.Options) (bridge.Bridge, error) {
 	srv, err := bridge.New(opts, lg)
 	if err != nil {
 		return nil, err
@@ -33,6 +34,7 @@ func RunBridgeOnPorts(lg logger.Logger, opts *bridge.Options) (bridge.Bridge, er
 	return srv, err
 }
 
+// RestartBridge restarts the given bridge
 func RestartBridge(t *testing.T, b bridge.Bridge) {
 	serverReady := sync.WaitGroup{}
 	serverReady.Add(1)
@@ -56,20 +58,24 @@ func NATSServerWithOptions(opts *server.Options) *server.Server {
 	return testserver.RunServer(opts)
 }
 
+// AssertMessageReceived waits for a boolean to be received on the given channel for one second and then
+// bails out with a Fatal message "expected message did not arrive"
 func AssertMessageReceived(t *testing.T, c <-chan bool) {
 	t.Helper()
 	select {
 	case <-c:
 	case <-time.After(time.Second): // Wait time is somewhat arbitrary.
-		t.Fatalf(`expected packet did not arrive`)
+		t.Fatalf(`expected message did not arrive`)
 	}
 }
 
+// AssertTimeout waits for 10 milliseconds to ensure that no boolean is received on the given channel and
+// then bails out with a Fatal message "unexpected message arrived".
 func AssertTimeout(t *testing.T, c <-chan bool) {
 	t.Helper()
 	select {
 	case <-c:
-		t.Fatalf(`unexpected packet arrived`)
+		t.Fatalf(`unexpected message arrived`)
 	case <-time.After(10 * time.Millisecond):
 	}
 }

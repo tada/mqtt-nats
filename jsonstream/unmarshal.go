@@ -9,8 +9,10 @@ import (
 	"github.com/tada/mqtt-nats/pio"
 )
 
+// A Consumer is a value that can initialize itself from a json.Decoder
 type Consumer interface {
-	// Initialize this instance from a json.Decoder
+	// Initialize this instance from a json.Decoder and one token that has
+	// already been read from that decoder.
 	UnmarshalFromJSON(js *json.Decoder, firstToken json.Token)
 }
 
@@ -22,6 +24,7 @@ func unexpectedError(err error) error {
 	return err
 }
 
+// Unmarshal initializes the given Consumer from a sequence of bytes that must be valid JSON.
 func Unmarshal(c Consumer, bs []byte) error {
 	return pio.Catch(func() error {
 		js := json.NewDecoder(bytes.NewReader(bs))

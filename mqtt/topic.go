@@ -17,6 +17,8 @@ const (
 	matchRest    = `.*`
 )
 
+// SubscriptionToRegexp converts an MQTT topic subscription into a regular expression that can be
+// used to match topics.
 func SubscriptionToRegexp(s string) *regexp.Regexp {
 	w := strings.Builder{}
 	for i, p := range strings.Split(s, "/") {

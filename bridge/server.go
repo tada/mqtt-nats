@@ -30,6 +30,7 @@ import (
 	"github.com/tada/mqtt-nats/pio"
 )
 
+// A Server implements the methods needed to support a Client connection.
 type Server interface {
 	pkg.IDManager
 	SessionManager() SessionManager
@@ -40,6 +41,11 @@ type Server interface {
 	PublishWill(will *pkg.Will, creds *pkg.Credentials) error
 }
 
+// A Bridge extends the Server with methods needed to start, restard, terminate, and
+// save/restore the Server state.
+//
+// This functionality is broken into a separate interface
+// to make it easier to mock the Server part when testing a Client
 type Bridge interface {
 	jsonstream.Consumer
 	jsonstream.Streamer
@@ -71,6 +77,7 @@ type server struct {
 	signals         chan os.Signal
 }
 
+// New creates a new Bridge configured using the given options and logger.
 func New(opts *Options, logger logger.Logger) (Bridge, error) {
 	s := &server{
 		Logger:    logger,
@@ -92,6 +99,9 @@ func New(opts *Options, logger logger.Logger) (Bridge, error) {
 	return s, err
 }
 
+// Restart will shutdown the bridge and then start it again using the same set of options. The given
+// WaitGroup can be nil or a WaitGroup that the caller can wait on until the bridge is ready to receive
+// new connections.
 func (s *server) Restart(ready *sync.WaitGroup) error {
 	err := s.Shutdown()
 	if err == nil && s.opts.StoragePath != "" {
