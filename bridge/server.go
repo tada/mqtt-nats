@@ -119,7 +119,7 @@ func (s *server) Shutdown() error {
 	s.signals <- syscall.SIGINT
 	select {
 	case <-s.Done():
-	case <-time.After(time.Second):
+	case <-time.After(5 * time.Second):
 		return errors.New("timeout during bridge shutdown")
 	}
 	return nil
