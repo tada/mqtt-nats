@@ -229,7 +229,7 @@ func Test_write_failure_when_connected(t *testing.T) {
 	// Should fail with forced disconnect
 	select {
 	case <-done:
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(time.Second):
 		t.Fatal("expected forced disconnect did not occur")
 	}
 
