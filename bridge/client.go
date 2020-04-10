@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -48,6 +49,7 @@ type client struct {
 	session        Session
 	connectPacket  *pkg.Connect
 	err            error
+	maxWait        time.Duration
 	natsSubs       map[string]*nats.Subscription
 	writeQueue     chan pkg.Packet
 	stLock         sync.RWMutex
@@ -121,9 +123,24 @@ func (c *client) State() byte {
 	return s
 }
 
+func (c *client) StateAndMaxWait() (byte, time.Duration) {
+	c.stLock.RLock()
+	s := c.st
+	m := c.maxWait
+	c.stLock.RUnlock()
+	return s, m
+}
+
 func (c *client) setState(newState byte) {
 	c.stLock.Lock()
 	c.st = newState
+	c.stLock.Unlock()
+}
+
+func (c *client) setStateAndMaxWait(newState byte, maxWait time.Duration) {
+	c.stLock.Lock()
+	c.st = newState
+	c.maxWait = maxWait
 	c.stLock.Unlock()
 }
 
@@ -133,6 +150,7 @@ func (c *client) SetDisconnected(err error) {
 	if c.st != StateDisconnected {
 		doit = true
 		c.st = StateDisconnected
+		c.maxWait = time.Millisecond
 	}
 	c.stLock.Unlock()
 
@@ -185,10 +203,9 @@ func (c *client) readLoop() {
 	r := mqtt.NewReader(c.mqttConn)
 
 	var err error
-	var maxWait time.Duration
 
 readNextPacket:
-	for st := c.State(); st != StateDisconnected && err == nil; st = c.State() {
+	for st, maxWait := c.StateAndMaxWait(); st != StateDisconnected && err == nil; st, maxWait = c.StateAndMaxWait() {
 		var (
 			b  byte
 			rl int
@@ -237,7 +254,7 @@ readNextPacket:
 		case pkg.TpConnect:
 			if p, err = pkg.ParseConnect(r, b, rl); err == nil {
 				c.Debug("received", p)
-				maxWait, err = c.handleConnect(p.(*pkg.Connect))
+				err = c.handleConnect(p.(*pkg.Connect))
 				if err == nil {
 					c.server.ManageClient(c)
 				}
@@ -287,20 +304,20 @@ readNextPacket:
 				c.natsUnsubscribe(p.(*pkg.Unsubscribe))
 			}
 		default:
-			c.Debug("received unknown packet type", (b&pkg.TpMask)>>4)
+			err = fmt.Errorf("received unknown packet type %d", (b&pkg.TpMask)>>4)
 		}
 	}
 	c.SetDisconnected(err)
 }
 
-func (c *client) handleConnect(cp *pkg.Connect) (time.Duration, error) {
+func (c *client) handleConnect(cp *pkg.Connect) error {
 	var err error
 	c.connectPacket = cp
 	c.natsConn, err = c.server.NatsConn(cp.Credentials())
 	if err != nil {
 		// TODO: Different error codes depending on error from NATS
 		c.Error("NATS connect failed", err)
-		return 0, pkg.RtServerUnavailable
+		return pkg.RtServerUnavailable
 	}
 
 	cid := cp.ClientID()
@@ -323,7 +340,7 @@ func (c *client) handleConnect(cp *pkg.Connect) (time.Duration, error) {
 		// Max wait between control packets is 1.5 times the keep alive value
 		maxWait = (cp.KeepAlive() * 3) / 2
 	}
-	c.setState(StateConnected)
+	c.setStateAndMaxWait(StateConnected, maxWait)
 	c.queueForWrite(pkg.NewConnAck(c.sessionPresent, 0))
 
 	if cp.CleanSession() {
@@ -337,7 +354,7 @@ func (c *client) handleConnect(cp *pkg.Connect) (time.Duration, error) {
 			c.Debug("connected using new (unclean) session")
 		}
 	}
-	return maxWait, nil
+	return nil
 }
 
 func (c *client) queueForWrite(p pkg.Packet) {

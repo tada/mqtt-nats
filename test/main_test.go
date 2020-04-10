@@ -25,7 +25,7 @@ func TestMain(m *testing.M) {
 
 	// NOTE: Setting level to logger.Debug here is very helpful when authoring and debugging tests but
 	//  it also makes the tests very verbose.
-	lg := logger.New(logger.Silent, os.Stdout, os.Stderr)
+	lg := logger.New(logger.Debug, os.Stdout, os.Stderr)
 
 	opts := bridge.Options{
 		Port:                 mqttPort,
