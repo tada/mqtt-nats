@@ -34,12 +34,8 @@ jobs:
       env:
         COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        go get github.com/mattn/goveralls
+        go get github.com/mattn/goveralls@master
         $(go env GOPATH)/bin/goveralls -tags=citest -coverprofile=coverage.tmp -service=github
-#     uses: shogo82148/actions-goveralls@v1
-#     with:
-#       github-token: ${{ secrets.GITHUB_TOKEN }}
-#       path-to-profile: coverage.tmp
 
   test-windows:
     name: Test Windows
