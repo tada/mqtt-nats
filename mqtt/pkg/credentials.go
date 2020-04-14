@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/tada/mqtt-nats/jsonstream"
-	"github.com/tada/mqtt-nats/pio"
+	"github.com/tada/catch"
+
+	"github.com/tada/catch/pio"
+	"github.com/tada/jsonstream"
 )
 
 // Credentials are user credentials that originates from an MQTT CONNECT packet.
@@ -35,20 +37,20 @@ func (c *Credentials) MarshalToJSON(w io.Writer) {
 
 // UnmarshalFromJSON initializes this instance from the tokens stream provided by the json.Decoder. The
 // first token has already been read and is passed as an argument.
-func (c *Credentials) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
-	jsonstream.AssertDelimToken(t, '{')
+func (c *Credentials) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {
+	jsonstream.AssertDelim(t, '{')
 	for {
-		k, ok := jsonstream.AssertStringOrEnd(js, '}')
+		k, ok := js.ReadStringOrEnd('}')
 		if !ok {
 			break
 		}
 		switch k {
 		case "u":
-			c.User = jsonstream.AssertString(js)
+			c.User = js.ReadString()
 		case "p":
-			p, err := base64.StdEncoding.DecodeString(jsonstream.AssertString(js))
+			p, err := base64.StdEncoding.DecodeString(js.ReadString())
 			if err != nil {
-				panic(pio.Error{Cause: err})
+				panic(catch.Error(err))
 			}
 			c.Password = p
 		}

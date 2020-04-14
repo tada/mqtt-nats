@@ -6,10 +6,12 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/tada/catch"
+
 	"github.com/nats-io/nats.go"
-	"github.com/tada/mqtt-nats/jsonstream"
+	"github.com/tada/catch/pio"
+	"github.com/tada/jsonstream"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
-	"github.com/tada/mqtt-nats/pio"
 )
 
 // A Session contains data associated with a client ID. The session might survive client
@@ -105,22 +107,22 @@ func (s *session) MarshalToJSON(w io.Writer) {
 	s.awaitsAckLock.RUnlock()
 }
 
-func (s *session) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
-	jsonstream.AssertDelimToken(t, '{')
+func (s *session) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {
+	jsonstream.AssertDelim(t, '{')
 	for {
-		k, ok := jsonstream.AssertStringOrEnd(js, '}')
+		k, ok := js.ReadStringOrEnd('}')
 		if !ok {
 			break
 		}
 		switch k {
 		case "id":
-			s.id = jsonstream.AssertString(js)
+			s.id = js.ReadString()
 		case "cid":
-			s.clientID = jsonstream.AssertString(js)
+			s.clientID = js.ReadString()
 		case "awAck":
-			jsonstream.AssertDelim(js, '{')
+			js.ReadDelim('{')
 			for {
-				k, ok = jsonstream.AssertStringOrEnd(js, '}')
+				k, ok = js.ReadStringOrEnd('}')
 				if !ok {
 					break
 				}
@@ -129,14 +131,14 @@ func (s *session) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 				}
 				i, err := strconv.Atoi(k)
 				if err != nil {
-					panic(pio.Error{Cause: err})
+					panic(catch.Error(err))
 				}
-				s.prelAwaitsAck[uint16(i)] = jsonstream.AssertString(js)
+				s.prelAwaitsAck[uint16(i)] = js.ReadString()
 			}
 		case "awClientAck":
-			jsonstream.AssertDelim(js, '{')
+			js.ReadDelim('{')
 			for {
-				k, ok = jsonstream.AssertStringOrEnd(js, '}')
+				k, ok = js.ReadStringOrEnd('}')
 				if !ok {
 					break
 				}
@@ -145,11 +147,12 @@ func (s *session) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
 				}
 				i, err := strconv.Atoi(k)
 				if err != nil {
-					panic(pio.Error{Cause: err})
+					panic(catch.Error(err))
 				}
 				pp := &pkg.Publish{}
-				jsonstream.AssertConsumer(js, pp)
-				s.awaitsClientAck[uint16(i)] = pp
+				if js.ReadConsumer(pp) {
+					s.awaitsClientAck[uint16(i)] = pp
+				}
 			}
 		}
 	}
@@ -317,27 +320,27 @@ func (m *sm) MarshalToJSON(w io.Writer) {
 	pio.WriteByte('}', w)
 }
 
-func (m *sm) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
-	jsonstream.AssertDelimToken(t, '{')
+func (m *sm) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {
+	jsonstream.AssertDelim(t, '{')
 	for {
-		k, ok := jsonstream.AssertStringOrEnd(js, '}')
+		k, ok := js.ReadStringOrEnd('}')
 		if !ok {
 			break
 		}
 		switch k {
 		case "sessions":
-			jsonstream.AssertDelim(js, '{')
+			js.ReadDelim('{')
 			for {
-				k, ok = jsonstream.AssertStringOrEnd(js, '}')
+				k, ok = js.ReadStringOrEnd('}')
 				if !ok {
 					break
 				}
 				s := &session{}
-				jsonstream.AssertConsumer(js, s)
+				js.ReadConsumer(s)
 				m.m[k] = s
 			}
 		case "seed":
-			m.seed = uint32(jsonstream.AssertInt(js))
+			m.seed = uint32(js.ReadInt())
 		}
 	}
 }

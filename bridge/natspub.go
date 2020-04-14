@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/tada/mqtt-nats/jsonstream"
+	"github.com/tada/catch/pio"
+	"github.com/tada/jsonstream"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
-	"github.com/tada/mqtt-nats/pio"
 )
 
 // natsPub represents a message which originated from this server (such as a client will) that has been
@@ -29,20 +29,24 @@ func (n *natsPub) MarshalToJSON(w io.Writer) {
 	pio.WriteByte('}', w)
 }
 
-func (n *natsPub) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
-	jsonstream.AssertDelimToken(t, '{')
+func (n *natsPub) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {
+	jsonstream.AssertDelim(t, '{')
 	for {
-		k, ok := jsonstream.AssertStringOrEnd(js, '}')
+		k, ok := js.ReadStringOrEnd('}')
 		if !ok {
 			break
 		}
 		switch k {
 		case "m":
 			n.pp = &pkg.Publish{}
-			jsonstream.AssertConsumer(js, n.pp)
+			if !js.ReadConsumer(n.pp) {
+				n.pp = nil
+			}
 		case "c":
 			n.creds = &pkg.Credentials{}
-			jsonstream.AssertConsumer(js, n.creds)
+			if !js.ReadConsumer(n.creds) {
+				n.creds = nil
+			}
 		}
 	}
 }

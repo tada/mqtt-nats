@@ -5,8 +5,8 @@ import (
 	"io"
 	"sync"
 
-	"github.com/tada/mqtt-nats/jsonstream"
-	"github.com/tada/mqtt-nats/pio"
+	"github.com/tada/catch/pio"
+	"github.com/tada/jsonstream"
 )
 
 // An IDManager manages packet IDs and ensures their uniqueness by maintaining a list of
@@ -87,21 +87,21 @@ func (s *idManager) MarshalToJSON(w io.Writer) {
 	pio.WriteByte('}', w)
 }
 
-func (s *idManager) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
+func (s *idManager) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {
 	s.inFlight = make(map[uint16]bool, 37)
-	jsonstream.AssertDelimToken(t, '{')
+	jsonstream.AssertDelim(t, '{')
 	for {
-		k, ok := jsonstream.AssertStringOrEnd(js, '}')
+		k, ok := js.ReadStringOrEnd('}')
 		if !ok {
 			break
 		}
 		switch k {
 		case "next":
-			s.nextFreePkgID = uint16(jsonstream.AssertInt(js))
+			s.nextFreePkgID = uint16(js.ReadInt())
 		case "inFlight":
-			jsonstream.AssertDelim(js, '[')
+			js.ReadDelim('[')
 			for {
-				i, ok := jsonstream.AssertIntOrEnd(js, ']')
+				i, ok := js.ReadIntOrEnd(']')
 				if !ok {
 					break
 				}

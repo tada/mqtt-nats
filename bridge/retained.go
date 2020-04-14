@@ -8,10 +8,10 @@ import (
 	"sync"
 
 	"github.com/nats-io/nats.go"
-	"github.com/tada/mqtt-nats/jsonstream"
+	"github.com/tada/catch/pio"
+	"github.com/tada/jsonstream"
 	"github.com/tada/mqtt-nats/mqtt"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
-	"github.com/tada/mqtt-nats/pio"
 )
 
 type retained struct {
@@ -52,17 +52,17 @@ func (r *retained) MarshalToJSON(w io.Writer) {
 	pio.WriteByte('}', w)
 }
 
-func (r *retained) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
-	jsonstream.AssertDelimToken(t, '{')
+func (r *retained) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {
+	jsonstream.AssertDelim(t, '{')
 	r.msgs = make(map[string]*pkg.Publish)
 	r.order = nil
 	for {
-		s, ok := jsonstream.AssertStringOrEnd(js, '}')
+		s, ok := js.ReadStringOrEnd('}')
 		if !ok {
 			break
 		}
 		p := &pkg.Publish{}
-		jsonstream.AssertConsumer(js, p)
+		js.ReadConsumer(p)
 		r.msgs[s] = p
 		r.order = append(r.order, s)
 	}

@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/tada/mqtt-nats/jsonstream"
+	"github.com/tada/jsonstream"
 	"github.com/tada/mqtt-nats/test/utils"
 )
 

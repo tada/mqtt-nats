@@ -21,13 +21,15 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tada/catch"
+
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nuid"
-	"github.com/tada/mqtt-nats/jsonstream"
+	"github.com/tada/catch/pio"
+	"github.com/tada/jsonstream"
 	"github.com/tada/mqtt-nats/logger"
 	"github.com/tada/mqtt-nats/mqtt"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
-	"github.com/tada/mqtt-nats/pio"
 )
 
 // A Server implements the methods needed to support a Client connection.
@@ -233,7 +235,7 @@ func (s *server) handleRetainedRequest(m *nats.Msg) {
 	if len(pps) == 0 {
 		err = m.Respond([]byte("[]"))
 	} else {
-		err = pio.Catch(func() error {
+		err = catch.Do(func() {
 			qos := byte(0)
 			buf := &bytes.Buffer{}
 			pio.WriteByte('[', buf)
@@ -257,7 +259,9 @@ func (s *server) handleRetainedRequest(m *nats.Msg) {
 				pio.WriteByte('}', buf)
 			}
 			pio.WriteByte(']', buf)
-			return m.Respond(buf.Bytes())
+			if err = m.Respond(buf.Bytes()); err != nil {
+				panic(catch.Error(err))
+			}
 		})
 	}
 	if err != nil {
@@ -435,35 +439,38 @@ func (s *server) MarshalToJSON(w io.Writer) {
 	pio.WriteByte('}', w)
 }
 
-func (s *server) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
-	jsonstream.AssertDelimToken(t, '{')
+func (s *server) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {
+	jsonstream.AssertDelim(t, '{')
 	var (
 		id        string
 		ackTracks map[uint16]*natsPub
 	)
 	for {
-		k, ok := jsonstream.AssertStringOrEnd(js, '}')
+		k, ok := js.ReadStringOrEnd('}')
 		if !ok {
 			break
 		}
 		switch k {
 		case "id":
-			id = jsonstream.AssertString(js)
+			id = js.ReadString()
 		case "idm":
-			jsonstream.AssertConsumer(js, s.IDManager.(jsonstream.Consumer))
+			js.ReadConsumer(s.IDManager.(jsonstream.Consumer))
 		case "sm":
-			jsonstream.AssertConsumer(js, s.sm.(jsonstream.Consumer))
+			js.ReadConsumer(s.sm.(jsonstream.Consumer))
 		case "retained":
-			jsonstream.AssertConsumer(js, s.retainedPackets)
+			js.ReadConsumer(s.retainedPackets)
 		case "pubacks":
-			jsonstream.AssertDelim(js, '[')
+			js.ReadDelim('[')
 			ackTracks = make(map[uint16]*natsPub)
 			for {
 				np := &natsPub{}
-				if !jsonstream.AssertConsumerOrEnd(js, np, ']') {
+				valid, ok := js.ReadConsumerOrEnd(np, ']')
+				if !ok {
 					break
 				}
-				ackTracks[np.pp.ID()] = np
+				if valid {
+					ackTracks[np.pp.ID()] = np
+				}
 			}
 		}
 	}
@@ -537,12 +544,10 @@ func (s *server) load(path string) error {
 	defer func() {
 		err = f.Close()
 	}()
-	return pio.Catch(func() error {
-		dc := json.NewDecoder(bufio.NewReader(f))
-		dc.UseNumber()
-		jsonstream.AssertConsumer(dc, s)
+	return catch.Do(func() {
+		dc := jsonstream.NewDecoder(bufio.NewReader(f))
+		dc.ReadConsumer(s)
 		s.Debug("State loaded from", path)
-		return nil
 	})
 }
 
@@ -552,11 +557,13 @@ func (s *server) persist(path string) error {
 		defer func() {
 			_ = f.Close()
 		}()
-		err = pio.Catch(func() error {
+		err = catch.Do(func() {
 			w := bufio.NewWriter(f)
 			s.MarshalToJSON(w)
+			if fe := w.Flush(); fe != nil {
+				panic(catch.Error(fe))
+			}
 			s.Debug("server State persisted to ", path)
-			return w.Flush()
 		})
 	}
 	return err

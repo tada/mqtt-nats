@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tada/mqtt-nats/jsonstream"
+	"github.com/tada/catch"
+
+	"github.com/tada/catch/pio"
+	"github.com/tada/jsonstream"
 	"github.com/tada/mqtt-nats/mqtt"
-	"github.com/tada/mqtt-nats/pio"
 )
 
 const (
@@ -205,29 +207,29 @@ func (p *Publish) TopicName() string {
 // if any errors are detected.
 //
 // See jsonstreamer.Consumer for more info.
-func (p *Publish) UnmarshalFromJSON(js *json.Decoder, t json.Token) {
-	jsonstream.AssertDelimToken(t, '{')
+func (p *Publish) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {
+	jsonstream.AssertDelim(t, '{')
 	for {
-		s, ok := jsonstream.AssertStringOrEnd(js, '}')
+		s, ok := js.ReadStringOrEnd('}')
 		if !ok {
 			break
 		}
 		switch s {
 		case "flags":
-			p.flags = byte(jsonstream.AssertInt(js))
+			p.flags = byte(js.ReadInt())
 		case "id":
-			p.id = uint16(jsonstream.AssertInt(js))
+			p.id = uint16(js.ReadInt())
 		case "name":
-			p.name = jsonstream.AssertString(js)
+			p.name = js.ReadString()
 		case "replyTo":
-			p.replyTo = jsonstream.AssertString(js)
+			p.replyTo = js.ReadString()
 		case "payload":
-			p.payload = []byte(jsonstream.AssertString(js))
+			p.payload = []byte(js.ReadString())
 		case "payloadEnc":
 			var err error
-			p.payload, err = base64.StdEncoding.DecodeString(jsonstream.AssertString(js))
+			p.payload, err = base64.StdEncoding.DecodeString(js.ReadString())
 			if err != nil {
-				panic(pio.Error{Cause: err})
+				panic(catch.Error(err))
 			}
 		}
 	}

@@ -3,7 +3,7 @@ package pkg_test
 import (
 	"testing"
 
-	"github.com/tada/mqtt-nats/jsonstream"
+	"github.com/tada/jsonstream"
 	"github.com/tada/mqtt-nats/mqtt/pkg"
 )
 
