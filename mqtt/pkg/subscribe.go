@@ -143,7 +143,7 @@ func NewSubAck(id uint16, topicReturns ...byte) *SubAck {
 }
 
 // ParseSubAck parses a SUBACK packet
-func ParseSubAck(r *mqtt.Reader, b byte, pkLen int) (Packet, error) {
+func ParseSubAck(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	var err error
 	if r, err = r.ReadPacket(pkLen); err != nil {
 		return nil, err

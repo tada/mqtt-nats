@@ -309,8 +309,8 @@ func ParseConnAck(r *mqtt.Reader, _ byte, pkLen int) (Packet, error) {
 	if pkLen != 2 {
 		return nil, errors.New("malformed CONNACK")
 	}
-	bs := make([]byte, 2)
-	_, err = r.Read(bs)
+	var bs []byte
+	bs, err = r.ReadExact(2)
 	if err != nil {
 		return nil, err
 	}
