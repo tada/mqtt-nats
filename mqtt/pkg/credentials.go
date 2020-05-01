@@ -20,19 +20,19 @@ type Credentials struct {
 
 // MarshalToJSON streams the JSON encoded form of this instance onto the given io.Writer
 func (c *Credentials) MarshalToJSON(w io.Writer) {
-	pio.WriteByte('{', w)
+	pio.WriteByte(w, '{')
 	if c.User != "" {
-		pio.WriteString(`"u":`, w)
-		jsonstream.WriteString(c.User, w)
+		pio.WriteString(w, `"u":`)
+		jsonstream.WriteString(w, c.User)
 	}
 	if c.Password != nil {
 		if c.User != "" {
-			pio.WriteByte(',', w)
+			pio.WriteByte(w, ',')
 		}
-		pio.WriteString(`"p":`, w)
-		jsonstream.WriteString(base64.StdEncoding.EncodeToString(c.Password), w)
+		pio.WriteString(w, `"p":`)
+		jsonstream.WriteString(w, base64.StdEncoding.EncodeToString(c.Password))
 	}
-	pio.WriteByte('}', w)
+	pio.WriteByte(w, '}')
 }
 
 // UnmarshalFromJSON initializes this instance from the tokens stream provided by the json.Decoder. The

@@ -238,27 +238,27 @@ func (s *server) handleRetainedRequest(m *nats.Msg) {
 		err = catch.Do(func() {
 			qos := byte(0)
 			buf := &bytes.Buffer{}
-			pio.WriteByte('[', buf)
+			pio.WriteByte(buf, '[')
 			for i := range pps {
 				pp := pps[i]
 				if qs[0] > qos {
 					qos = qs[0]
 				}
 				if i > 0 {
-					pio.WriteByte(',', buf)
+					pio.WriteByte(buf, ',')
 				}
-				pio.WriteString(`{"subject":`, buf)
-				jsonstream.WriteString(mqtt.ToNATS(pp.TopicName()), buf)
+				pio.WriteString(buf, `{"subject":`)
+				jsonstream.WriteString(buf, mqtt.ToNATS(pp.TopicName()))
 				if pkg.IsPrintableASCII(pp.Payload()) {
-					pio.WriteString(`,"payload":`, buf)
-					jsonstream.WriteString(string(pp.Payload()), buf)
+					pio.WriteString(buf, `,"payload":`)
+					jsonstream.WriteString(buf, string(pp.Payload()))
 				} else {
-					pio.WriteString(`,"payloadEnc":`, buf)
-					jsonstream.WriteString(base64.StdEncoding.EncodeToString(pp.Payload()), buf)
+					pio.WriteString(buf, `,"payloadEnc":`)
+					jsonstream.WriteString(buf, base64.StdEncoding.EncodeToString(pp.Payload()))
 				}
-				pio.WriteByte('}', buf)
+				pio.WriteByte(buf, '}')
 			}
-			pio.WriteByte(']', buf)
+			pio.WriteByte(buf, ']')
 			if err = m.Respond(buf.Bytes()); err != nil {
 				panic(catch.Error(err))
 			}
@@ -413,30 +413,30 @@ func (s *server) republish(np *natsPub) {
 }
 
 func (s *server) MarshalToJSON(w io.Writer) {
-	pio.WriteString(`{"ts":`, w)
-	jsonstream.WriteString(time.Now().Format(time.RFC3339), w)
-	pio.WriteString(`,"id":`, w)
-	jsonstream.WriteString(s.session.ClientID(), w)
-	pio.WriteString(`,"idm":`, w)
+	pio.WriteString(w, `{"ts":`)
+	jsonstream.WriteString(w, time.Now().Format(time.RFC3339))
+	pio.WriteString(w, `,"id":`)
+	jsonstream.WriteString(w, s.session.ClientID())
+	pio.WriteString(w, `,"idm":`)
 	s.IDManager.(jsonstream.Streamer).MarshalToJSON(w)
-	pio.WriteString(`,"sm":`, w)
+	pio.WriteString(w, `,"sm":`)
 	s.sm.(jsonstream.Streamer).MarshalToJSON(w)
 	if !s.retainedPackets.Empty() {
-		pio.WriteString(`,"retained":`, w)
+		pio.WriteString(w, `,"retained":`)
 		s.retainedPackets.MarshalToJSON(w)
 	}
 	trk := s.awaitsAckSnapshot()
 	if len(trk) > 0 {
-		pio.WriteString(`,"pubacks":[`, w)
+		pio.WriteString(w, `,"pubacks":[`)
 		for i := range trk {
 			if i > 0 {
-				pio.WriteByte(',', w)
+				pio.WriteByte(w, ',')
 			}
 			trk[i].MarshalToJSON(w)
 		}
-		pio.WriteByte(']', w)
+		pio.WriteByte(w, ']')
 	}
-	pio.WriteByte('}', w)
+	pio.WriteByte(w, '}')
 }
 
 func (s *server) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {

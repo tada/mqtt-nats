@@ -72,38 +72,38 @@ func (s *session) MarshalJSON() ([]byte, error) {
 }
 
 func (s *session) MarshalToJSON(w io.Writer) {
-	pio.WriteString(`{"id":`, w)
-	jsonstream.WriteString(s.id, w)
-	pio.WriteString(`,"cid":`, w)
-	jsonstream.WriteString(s.clientID, w)
+	pio.WriteString(w, `{"id":`)
+	jsonstream.WriteString(w, s.id)
+	pio.WriteString(w, `,"cid":`)
+	jsonstream.WriteString(w, s.clientID)
 	s.awaitsAckLock.RLock()
 	if len(s.awaitsAck) > 0 {
-		pio.WriteString(`,"awAck":`, w)
+		pio.WriteString(w, `,"awAck":`)
 		sep := byte('{')
 		for k, v := range s.awaitsAck {
-			pio.WriteByte(sep, w)
+			pio.WriteByte(w, sep)
 			sep = byte(',')
-			pio.WriteByte('"', w)
-			pio.WriteInt(int64(k), w)
-			pio.WriteString(`":`, w)
-			jsonstream.WriteString(v.Subject, w)
+			pio.WriteByte(w, '"')
+			pio.WriteInt(w, int64(k))
+			pio.WriteString(w, `":`)
+			jsonstream.WriteString(w, v.Subject)
 		}
-		pio.WriteByte('}', w)
+		pio.WriteByte(w, '}')
 	}
 	if len(s.awaitsClientAck) > 0 {
-		pio.WriteString(`,"awClientAck":`, w)
+		pio.WriteString(w, `,"awClientAck":`)
 		sep := byte('{')
 		for k, v := range s.awaitsClientAck {
-			pio.WriteByte(sep, w)
+			pio.WriteByte(w, sep)
 			sep = byte(',')
-			pio.WriteByte('"', w)
-			pio.WriteInt(int64(k), w)
-			pio.WriteString(`":`, w)
+			pio.WriteByte(w, '"')
+			pio.WriteInt(w, int64(k))
+			pio.WriteString(w, `":`)
 			v.MarshalToJSON(w)
 		}
-		pio.WriteByte('}', w)
+		pio.WriteByte(w, '}')
 	}
-	pio.WriteByte('}', w)
+	pio.WriteByte(w, '}')
 	s.awaitsAckLock.RUnlock()
 }
 
@@ -303,21 +303,21 @@ func (m *sm) MarshalToJSON(w io.Writer) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
-	pio.WriteString(`{"seed":`, w)
-	pio.WriteInt(int64(m.seed), w)
+	pio.WriteString(w, `{"seed":`)
+	pio.WriteInt(w, int64(m.seed))
 	if len(m.m) > 0 {
-		pio.WriteString(`,"sessions":`, w)
+		pio.WriteString(w, `,"sessions":`)
 		sep := byte('{')
 		for k, v := range m.m {
-			pio.WriteByte(sep, w)
+			pio.WriteByte(w, sep)
 			sep = ','
-			jsonstream.WriteString(k, w)
-			pio.WriteByte(':', w)
+			jsonstream.WriteString(w, k)
+			pio.WriteByte(w, ':')
 			v.MarshalToJSON(w)
 		}
-		pio.WriteByte('}', w)
+		pio.WriteByte(w, '}')
 	}
-	pio.WriteByte('}', w)
+	pio.WriteByte(w, '}')
 }
 
 func (m *sm) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {

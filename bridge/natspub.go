@@ -20,13 +20,13 @@ type natsPub struct {
 }
 
 func (n *natsPub) MarshalToJSON(w io.Writer) {
-	pio.WriteString(`{"m":`, w)
+	pio.WriteString(w, `{"m":`)
 	n.pp.MarshalToJSON(w)
 	if n.creds != nil {
-		pio.WriteString(`,"c":`, w)
+		pio.WriteString(w, `,"c":`)
 		n.creds.MarshalToJSON(w)
 	}
-	pio.WriteByte('}', w)
+	pio.WriteByte(w, '}')
 }
 
 func (n *natsPub) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {

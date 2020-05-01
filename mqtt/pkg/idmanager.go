@@ -72,19 +72,19 @@ func (s *idManager) MarshalToJSON(w io.Writer) {
 	}
 	s.pkgIDLock.Unlock()
 
-	pio.WriteString(`{"next":`, w)
-	pio.WriteInt(int64(nf), w)
+	pio.WriteString(w, `{"next":`)
+	pio.WriteInt(w, int64(nf))
 	if len(inf) > 0 {
-		pio.WriteString(`,"inFlight":[`, w)
+		pio.WriteString(w, `,"inFlight":[`)
 		for i := range inf {
 			if i > 0 {
-				pio.WriteByte(',', w)
+				pio.WriteByte(w, ',')
 			}
-			pio.WriteInt(int64(inf[i]), w)
+			pio.WriteInt(w, int64(inf[i]))
 		}
-		pio.WriteByte(']', w)
+		pio.WriteByte(w, ']')
 	}
-	pio.WriteByte('}', w)
+	pio.WriteByte(w, '}')
 }
 
 func (s *idManager) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {

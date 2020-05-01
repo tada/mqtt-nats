@@ -40,16 +40,16 @@ func (r *retained) MarshalToJSON(w io.Writer) {
 	defer r.lock.RUnlock()
 	sep := byte('{')
 	for _, t := range r.order {
-		pio.WriteByte(sep, w)
+		pio.WriteByte(w, sep)
 		sep = byte(',')
-		jsonstream.WriteString(t, w)
-		pio.WriteByte(':', w)
+		jsonstream.WriteString(w, t)
+		pio.WriteByte(w, ':')
 		r.msgs[t].MarshalToJSON(w)
 	}
 	if sep == '{' {
-		pio.WriteByte(sep, w)
+		pio.WriteByte(w, sep)
 	}
-	pio.WriteByte('}', w)
+	pio.WriteByte(w, '}')
 }
 
 func (r *retained) UnmarshalFromJSON(js jsonstream.Decoder, t json.Token) {

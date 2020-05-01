@@ -137,26 +137,26 @@ func IsPrintableASCII(bs []byte) bool {
 
 // MarshalToJSON marshals the packet as a JSON object onto the given writer
 func (p *Publish) MarshalToJSON(w io.Writer) {
-	pio.WriteString(`{"flags":`, w)
-	pio.WriteInt(int64(p.flags), w)
-	pio.WriteString(`,"id":`, w)
-	pio.WriteInt(int64(p.id), w)
-	pio.WriteString(`,"name":`, w)
-	jsonstream.WriteString(p.name, w)
+	pio.WriteString(w, `{"flags":`)
+	pio.WriteInt(w, int64(p.flags))
+	pio.WriteString(w, `,"id":`)
+	pio.WriteInt(w, int64(p.id))
+	pio.WriteString(w, `,"name":`)
+	jsonstream.WriteString(w, p.name)
 	if p.replyTo != "" {
-		pio.WriteString(`,"replyTo":`, w)
-		jsonstream.WriteString(p.replyTo, w)
+		pio.WriteString(w, `,"replyTo":`)
+		jsonstream.WriteString(w, p.replyTo)
 	}
 	if len(p.payload) > 0 {
 		if IsPrintableASCII(p.payload) {
-			pio.WriteString(`,"payload":`, w)
-			jsonstream.WriteString(string(p.payload), w)
+			pio.WriteString(w, `,"payload":`)
+			jsonstream.WriteString(w, string(p.payload))
 		} else {
-			pio.WriteString(`,"payloadEnc":`, w)
-			jsonstream.WriteString(base64.StdEncoding.EncodeToString(p.payload), w)
+			pio.WriteString(w, `,"payloadEnc":`)
+			jsonstream.WriteString(w, base64.StdEncoding.EncodeToString(p.payload))
 		}
 	}
-	pio.WriteByte('}', w)
+	pio.WriteByte(w, '}')
 }
 
 // NatsReplyTo returns the NATS replyTo subject. Only valid when the packet represents something
