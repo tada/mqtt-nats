@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -72,12 +73,22 @@ type server struct {
 	clientWG        sync.WaitGroup
 	clientLock      sync.RWMutex
 	trackAckLock    sync.RWMutex
+	freeWorkerCount uint32
 	pubAcks         map[uint16]*natsPub // will be republished until ack arrives from nats
 	pubAckTimeout   time.Duration
 	pubAckTimer     *time.Timer
+	incoming        chan net.Conn
 	done            chan bool
 	signals         chan os.Signal
 }
+
+// workerGrowth is the initial number of parallel workers (go routines) that serves the incoming queue of net.Conn. It
+// is also the growth and shrink factor for such workers.
+const workerGrowth = 10
+
+// incomingQueueSize is the size of the queue holding incoming connections between the time they are
+// accepted and until an incoming worker picks them from the queue.
+const incomingQueueSize = 20
 
 // New creates a new Bridge configured using the given options and logger.
 func New(opts *Options, logger logger.Logger) (Bridge, error) {
@@ -148,6 +159,7 @@ func (s *server) bootUp(ready *sync.WaitGroup) (net.Listener, error) {
 		}
 	}
 
+	s.incoming = make(chan net.Conn, incomingQueueSize)
 	s.done = make(chan bool, 1)
 	return listener, nil
 }
@@ -173,6 +185,9 @@ func (s *server) Serve(ready *sync.WaitGroup) error {
 		// TODO: Add signal to reload config.
 	}()
 
+	// Start initial client workers
+	s.deployMoreWorkers()
+
 	for {
 		mqttConn, err := listener.Accept()
 		if err != nil {
@@ -182,15 +197,51 @@ func (s *server) Serve(ready *sync.WaitGroup) error {
 			}
 			s.Error(err)
 		} else {
-			go s.ServeClient(mqttConn)
+			if s.freeWorkerCount < 3 {
+				// Workers have a hard time keeping up. Deploy some more.
+				s.deployMoreWorkers()
+			}
+			s.incoming <- mqttConn
 		}
 	}
 	return s.drainAndShutdown()
 }
 
+func (s *server) deployMoreWorkers() {
+	// Start the client workers
+	for i := 1; i <= workerGrowth; i++ {
+		go s.connectionWorker(i)
+	}
+}
+
+// connectionWorker picks one connection at a time from the incoming queue, creates a client, and
+// then lets the client serve that connection.
+func (s *server) connectionWorker(_ int) {
+	defer s.clientWG.Done()
+
+	s.clientWG.Add(1)
+	atomic.AddUint32(&s.freeWorkerCount, 1)
+
+	for mqttConn := range s.incoming {
+		atomic.AddUint32(&s.freeWorkerCount, ^uint32(0))
+
+		c := NewClient(s, s, mqttConn)
+		c.Serve()
+		s.unmanageClient(c)
+
+		if s.freeWorkerCount > workerGrowth {
+			// We have an excess number of free workers. Kill this one.
+			return
+		}
+		atomic.AddUint32(&s.freeWorkerCount, 1)
+	}
+	atomic.AddUint32(&s.freeWorkerCount, ^uint32(0))
+}
+
 func (s *server) drainAndShutdown() error {
 	s.Debug("waiting for clients to drain")
 	s.clientLock.Lock()
+	close(s.incoming)
 	clients := s.clients
 	s.clients = nil
 	s.clientLock.Unlock()
